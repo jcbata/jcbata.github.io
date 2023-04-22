@@ -8,8 +8,8 @@ etiqueta = [
     ,['Documento','Es probable que se observe su expediente, suba una otra imagen de fachada de su establecimiento']
     ,['Establecimiento Urbano','La imagen es aceptable, Establecimiento en Zona Urbana']
     ,['Establecimiento Rural','La imagen es aceptable, Establecimiento en Zona Rural']
-    ,['Edificio histórico','Es probable que su expediente sea observado, suba una imágen de un establecimiento de salud']
-    ,['Persona','Es probable que su expediente sea observado, suba otra imgaen de su establecimiento sin personas']
+    ,['Edificio histórico','Es probable que su expediente sea observado, suba una imagen de un establecimiento de salud']
+    ,['Persona','Es probable que su expediente sea observado, suba otra imagen de su establecimiento sin personas']
     ,['Error','Es probable que su expediente sea observado, No se aprecia la fachada de su establecimiento de salud']
 ]
 
