@@ -5,19 +5,68 @@
   <title>Predicción de imágenes con Keras</title>
 </head>
 <body>
+  <style>
+    .btn-primary {
+      color: #fff;
+      background-color: #4285f4;
+      border-color: #4285f4;
+    }
+    .btn, .btn-lg, .btn-xl {
+    padding: 0 12px;
+    font-size: 15px;
+    border-radius: 3px;
+    font-weight: 500;
+    }
+    .kopa-header-bottom {
+      position: relative;
+      background: #FC8D12;
+      font-size: 13px;
+      color: #fff;
+      margin:0;
+      padding: 10px;
+      width: 100%;
+    }
+    body {
+    color: #444;
+    font-family: "proxima-nova","Helvetica Neue","Helvetica","sans-serif";
+    }
+    h1{
+      margin:0;
+    }
+    p {
+      font-size: 15px;
+    }
+    .container {
+      display: flex;
+    }
+    .container div {
+      flex: 1;
+      margin:"10px"
+    }
+  </style>
+  <header>
+  <div class="kopa-header-bottom">
   <h1>RENIPRESS - Demo</h1>
+  </div>
+</header>
+
+<div class="container">
+  <DIV >
   <input type="file" id="inputImage">
   <br>
   <br>
-  <img id="imagePreview" height="250" >
+  <img id="imagePreview" width="100%" >
   <br>
   <br>
-  <button id="predictButton">Predecir</button>
+  <button id="predictButton" class="btn btn-primary">PREDECIR</button>
   <br>
   <br>
+</DIV>
+  <div style="padding-left: 10px;">
   <p id="predictionResult"></p>
-  
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.2.0/dist/tf.min.js"></script>
-  <script src="prediction7.js"></script>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.2.0/dist/tf.min.js"></script>
+<script src="prediction7.js"></script>
 </body>
 </html>

@@ -58,9 +58,10 @@ predictButton.addEventListener('click', async function() {
     id_prediction= prediction.argMax(1).dataSync()[0];
   }
 
-
-  predictionResult.innerHTML = `${etiqueta[id_prediction][0]} <br>
-    ${etiqueta[id_prediction][1]}`;
+    predictionResult.innerHTML = `Predicción: ${etiqueta[id_prediction][0]} <br><br>
+  Mensaje: ${etiqueta[id_prediction][1]} <br><br>
+  
+  ${Math.max(...r1)*100} %`;
   console.log(prediction.dataSync());
 
 });
