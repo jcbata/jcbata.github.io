@@ -49,8 +49,6 @@ predictButton.addEventListener('click', async function() {
   // Realizar la predicción
   const prediction = model.predict(processedImage);
 
-resultados = prediction.arraySync();
- resu = resultados.indexOf(Math.max(resultados));
   // Mostrar el resultado de la predicción
   predictionResult.innerHTML = `${etiqueta[prediction.argMax(1).dataSync()[0]][0]} <br>
     ${etiqueta[prediction.argMax(1).dataSync()[0]][1]}`;
