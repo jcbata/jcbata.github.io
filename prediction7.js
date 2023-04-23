@@ -50,8 +50,17 @@ predictButton.addEventListener('click', async function() {
   const prediction = model.predict(processedImage);
 
   // Mostrar el resultado de la predicción
-  predictionResult.innerHTML = `${etiqueta[prediction.argMax(1).dataSync()[0]][0]} <br>
-    ${etiqueta[prediction.argMax(1).dataSync()[0]][1]}`;
+  r1 = prediction.dataSync();
+
+  id_prediction = 6;
+  // se verifica si algún elemento de la predicción tiene presición mayor al 50%
+  if( r1.some(function (el){return el>.5;})){
+    id_prediction= prediction.argMax(1).dataSync()[0];
+  }
+
+
+  predictionResult.innerHTML = `${etiqueta[id_prediction][0]} <br>
+    ${etiqueta[id_prediction][1]}`;
   console.log(prediction.dataSync());
 
 });
