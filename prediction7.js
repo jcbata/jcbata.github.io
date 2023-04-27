@@ -54,7 +54,7 @@ predictButton.addEventListener('click', async function() {
 
   id_prediction = 6;
   // se verifica si algún elemento de la predicción tiene presición mayor al 50%
-  if( r1.some(function (el){return el>.7;})){
+  if( r1.some(function (el){return el>.55;})){
     id_prediction= prediction.argMax(1).dataSync()[0];
   }
 
