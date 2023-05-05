@@ -15,12 +15,18 @@ etiqueta = [
 
 async function loadModel() {
   // Cargar el modelo Keras desde un servidor remoto
+  document.getElementById("modal-espera").style.display = "block";
   console.log("Cargando modelo...");
+
   model = await tf.loadGraphModel('./ipress_model3/model.json');
   
   console.log("Modelo cargado.");
+  document.getElementById("modal-espera").style.display = "none";
+
 }
+
 loadModel();
+
 inputImage.addEventListener('change', function() {
   const reader = new FileReader();
   reader.onload = function() {
