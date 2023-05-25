@@ -4,8 +4,8 @@ const imagePreview = document.getElementById('imagePreview');
 const predictionResult = document.getElementById('predictionResult');
 
 etiqueta = [
-    ['Ambulancia','La imágen es correcta, corresponde a un servicio de traslado de pacientes']
-    ,['Documento','Es probable que se observe su expediente, suba una otra imagen de fachada de su establecimiento']
+    ['Ambulancia','La imagen es correcta, corresponde a un servicio de traslado de pacientes']
+    ,['Documento','La imagen no corresponde a un establecimiento de salud, suba una otra imagen de fachada']
     ,['Establecimiento Urbano','La imagen es aceptable, Establecimiento en Zona Urbana']
     ,['Establecimiento Rural','La imagen es aceptable, Establecimiento en Zona Rural']
     ,['Edificio histórico','Es probable que su expediente sea observado, suba una imagen de un establecimiento de salud']
@@ -18,7 +18,7 @@ async function loadModel() {
   document.getElementById("modal-espera").style.display = "block";
   console.log("Cargando modelo...");
 
-  model = await tf.loadGraphModel('./ipress_model3/model.json');
+  model = await tf.loadGraphModel('./ipress_model4/model.json');
   
   console.log("Modelo cargado.");
   document.getElementById("modal-espera").style.display = "none";
