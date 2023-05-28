@@ -10,6 +10,7 @@ etiqueta = [
     ,['Establecimiento Rural','La imagen es aceptable, Establecimiento en Zona Rural']
     ,['Edificio histórico','Es probable que su expediente sea observado, suba una imagen de un establecimiento de salud']
     ,['Persona','Es probable que su expediente sea observado, suba otra imagen de su establecimiento sin personas']
+    ,['Auto','Aparece algún auto, tome una mejor foto de la fachada de su establecimiento de salud']
     ,['Error','Es probable que su expediente sea observado, No se aprecia la fachada de su establecimiento de salud']
 ]
 
@@ -18,7 +19,7 @@ async function loadModel() {
   document.getElementById("modal-espera").style.display = "block";
   console.log("Cargando modelo...");
 
-  model = await tf.loadGraphModel('./ipress_model4/model.json');
+  model = await tf.loadGraphModel('./ipress_model2/model.json');
   
   console.log("Modelo cargado.");
   document.getElementById("modal-espera").style.display = "none";
