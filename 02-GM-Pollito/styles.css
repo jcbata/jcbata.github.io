@@ -1,0 +1,21 @@
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+}
+
+#game-area {
+    position: relative;
+    width: 300px;
+    height: 300px;
+    border: 2px solid #333;
+    margin: 20px auto;
+    background-color: #f0f0f0;
+}
+
+#square {
+    width: 30px;
+    height: 30px;
+    background-color: red;
+    position: absolute;
+    cursor: pointer;
+}
