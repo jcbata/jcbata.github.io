@@ -44,8 +44,8 @@ function updateInterval() {
     moveTimer = setInterval(moveSquare, moveInterval); // Inicia un nuevo temporizador con el intervalo actualizado
 }
 
-// Evento de clic para aumentar el puntaje y marcar que se hizo clic
-square.addEventListener("click", () => {
+// Función para manejar el "atrapar" el cuadrado (clic o toque)
+function catchSquare() {
     score++;
     scoreDisplay.textContent = score;
     squareClicked = true; // Indica que el cuadrado fue atrapado
@@ -56,7 +56,11 @@ square.addEventListener("click", () => {
     if (score % 10 === 0 && moveInterval > 500) { // Límite mínimo de 500 ms
         moveInterval -= 100;
     }
-});
+}
+
+// Agrega los eventos de clic y toque al cuadrado
+square.addEventListener("click", catchSquare);
+square.addEventListener("touchstart", catchSquare); // Detecta toques en dispositivos móviles
 
 // Función para reiniciar el juego
 function resetGame() {
