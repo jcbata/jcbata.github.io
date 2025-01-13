@@ -38,7 +38,7 @@ function setup() {
 	tablero.cargaPiezas(img);
 	
 	
-	moveAuto();
+	//moveAuto(); // Se activa para que las blancas jueguen automáticamente
 	//mueveRandom(); //juega solo en random
 	
 }
