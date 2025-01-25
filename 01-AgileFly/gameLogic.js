@@ -1,22 +1,23 @@
 // gameLogic.js
 
-// Función para manejar el "atrapar" el cuadrado (clic o toque)
-function catchSquare() {
-    score++;
-    scoreDisplay.textContent = score;
-    squareClicked = true; // Indica que el cuadrado fue atrapado
-    moveSquare(); // Mueve el cuadrado inmediatamente al atraparlo
-    updateInterval(); // Reinicia el temporizador de movimiento
+// Función para manejar el "atrapar" una mosca
+function catchFly(event) {
+    const fly = event.target;
 
-    // Ajusta el intervalo de movimiento cada 10 puntos
-    if (score % 10 === 0 && moveInterval > 500) { // Límite mínimo de 500 ms
-        moveInterval -= 100;
+    if (!fly.clicked) { // Solo procesa el clic si no se ha marcado como atrapada
+        fly.clicked = true; // Marca la mosca como atrapada
+        score++;
+        scoreDisplay.textContent = score;
+
+        // Ajusta el intervalo de movimiento cada 10 puntos
+        if (score % 10 === 0 && moveInterval > 500) {
+            moveInterval -= 100;
+            updateInterval(); // Reinicia el temporizador con el nuevo intervalo
+        }
+
+        // Sube de nivel cada 50 puntos
+        if (score % 50 === 0) {
+            levelUp();
+        }
     }
 }
-
-// Agrega los eventos de clic y toque al cuadrado
-square.addEventListener("click", catchSquare);
-square.addEventListener("touchstart", catchSquare); // Detecta toques en dispositivos móviles
-
-// Inicia el juego por primera vez
-updateInterval();
