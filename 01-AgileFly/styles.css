@@ -49,3 +49,15 @@ p {
     0% { transform: translateY(0) rotate(0deg); }
     100% { transform: translateY(-5px) rotate(10deg); }
 }
+
+/* Estilo para cada mosca */
+.fly {
+    width: 50px;
+    height: 50px;
+    background-image: url('fly.svg');
+    background-size: contain;
+    background-repeat: no-repeat;
+    position: absolute;
+    cursor: pointer;
+    animation: fly 0.2s infinite alternate; /* Animación para simular el vuelo */
+}
