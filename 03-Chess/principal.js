@@ -133,6 +133,12 @@ function mouseDragged() {
 
 function touchEnded() {
 	
+       let pos = tablero.fCoordMouse(touchX,touchY);
+	//  aquí ya debería estar seleccionada la pieza en otro evento
+	if(tablero.posSel[0]!==-1){
+		
+	}
+
 
 	for(i=0;i<tablero.piezas.length;i++){ 
 		// el buqle es para buscar la pieza seleccinada. aunque también se podría ubicar solo con las coordenadas posSel
@@ -142,7 +148,7 @@ function touchEnded() {
 			if(tablero.piezas[i].pos[0] == tablero.posSel[0] && tablero.piezas[i].pos[1] == tablero.posSel[1]){
 				//valida que la pieza sea la seleccionada
 				if(tablero.tablero[0].length*tablero.tam>=mouseX && tablero.tablero.length*tablero.tam>=mouseY){
-				tablero.mover(tablero.piezas[i],tablero.fCoordMouse(x,y));
+				tablero.mover(tablero.piezas[i],pos);
 				tablero.cargaPiezas(img);	// crea las piezas en el tablero a partir de la matriz
 				console.log("pieza:",tablero.piezas[i]);
 				}
