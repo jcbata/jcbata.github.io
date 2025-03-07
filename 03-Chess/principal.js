@@ -133,7 +133,7 @@ function mouseDragged() {
 
 function touchEnded() {
 	
-       let pos = tablero.fCoordMouse(touchX,touchY);
+       let pos = tablero.fCoordMouse(mouseX,mouseY);
 	//  aquí ya debería estar seleccionada la pieza en otro evento
 	if(tablero.posSel[0]!==-1){
 		
