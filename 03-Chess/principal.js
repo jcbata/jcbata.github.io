@@ -224,6 +224,7 @@ function touchEnded() {
 	
 	
 	tablero.posSel = [-1,-1];
+	tablero.piezaSel = [-1,-1];
 
 }
 
