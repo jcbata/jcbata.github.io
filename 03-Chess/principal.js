@@ -81,16 +81,20 @@ function mouseMoved() {
 }
 
 function mousePressed() {
-	x = mouseX;
-	y = mouseY;
-	//fullscreen(true);
-	console.log(tablero.fCoordMouse(x,y));
-	tablero.posSel = tablero.fCoordMouse(x,y);
-	tablero.piezaSel = tablero.posSel;
 
 	
-		
-	
+	if(tablero.posSel[0]===-1){
+		x = mouseX;
+		y = mouseY;
+	//fullscreen(true);
+		console.log(tablero.fCoordMouse(x,y));
+		tablero.posSel = tablero.fCoordMouse(x,y);
+		tablero.piezaSel = tablero.posSel;
+	}else{
+		tablero.posSel = [-1,-1];
+		tablero.piezaSel = [-1,-1];
+	}
+
 }
 function mouseDragged() {
 	x = mouseX;
@@ -135,9 +139,6 @@ function touchEnded() {
 	
        let pos = tablero.fCoordMouse(mouseX,mouseY);
 	//  aquí ya debería estar seleccionada la pieza en otro evento
-	if(tablero.posSel[0]!==-1){
-		
-	}
 
 
 	for(i=0;i<tablero.piezas.length;i++){ 
@@ -223,8 +224,8 @@ function touchEnded() {
 	//tablero.moverRandom();
 	
 	
-	tablero.posSel = [-1,-1];
-	tablero.piezaSel = [-1,-1];
+	
+
 
 }
 
