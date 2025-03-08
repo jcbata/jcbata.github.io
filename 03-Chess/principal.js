@@ -31,7 +31,7 @@ function setup() {
 		al enfrentarlos *Se debería incluir 2 barra de evaluación una por cada función!
 
 	*/
-	tablero.tam = Math.min(width, height) / 8;
+	tablero.tam = Math.min(width, height) / 8 / 2;
 	tablero.auto_n=true;
 	tablero.fdeNegras = valorPiezaConObj;
 	tablero.fdeBlancas = valorPiezaConObj;
