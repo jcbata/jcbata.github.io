@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Conducción en Primera Persona</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #1a2a6c);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            color: white;
+        }
+        
+        .game-container {
+            position: relative;
+            width: 800px;
+            text-align: center;
+            padding: 20px;
+            background: rgba(0, 0, 30, 0.7);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+            border: 2px solid #3498db;
+            z-index: 10;
+        }
+        
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 15px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
+            color: #f8f8f8;
+            letter-spacing: 2px;
+            background: linear-gradient(to right, #3498db, #2ecc71);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            margin-bottom: 25px;
+            color: #f1c40f;
+            font-weight: 500;
+        }
+        
+        canvas {
+            background: linear-gradient(to bottom, #87CEEB 40%, #27ae60 40%);
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+            display: block;
+            margin: 0 auto;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 25px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 15px;
+        }
+        
+        .key-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .key-group h3 {
+            margin-bottom: 15px;
+            color: #3498db;
+        }
+        
+        .key-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+        
+        .key {
+            width: 70px;
+            height: 70px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #2c3e50;
+            border-radius: 10px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            box-shadow: 0 5px 0 #1a2530;
+            transition: all 0.1s;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .key.active {
+            transform: translateY(3px);
+            box-shadow: 0 2px 0 #1a2530;
+            background: #3498db;
+        }
+        
+        .key.arrow {
+            background: #e74c3c;
+        }
+        
+        .key.ws {
+            background: #2ecc71;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 25px;
+        }
+        
+        .stat-box {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 1.3rem;
+            min-width: 200px;
+            border: 2px solid #3498db;
+        }
+        
+        .stat-value {
+            color: #f1c40f;
+            font-weight: bold;
+            font-size: 1.8rem;
+            margin-top: 5px;
+        }
+        
+        .road-sign {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #e74c3c;
+            padding: 15px;
+            border-radius: 10px;
+            font-weight: bold;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+            border: 2px solid white;
+        }
+        
+        .debug {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 14px;
+            color: #0f0;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>SIMULADOR DE CONDUCCIÓN 3D</h1>
+        <p class="subtitle">Perspectiva en primera persona con giros izquierda/derecha</p>
+        
+        <canvas id="gameCanvas" width="800" height="500"></canvas>
+        
+        <div class="road-sign">¡CONTROLES ACTIVOS!</div>
+        
+        <div class="controls">
+            <div class="key-group">
+                <h3>Movimiento</h3>
+                <div class="key-row">
+                    <div class="key ws" id="keyW">W</div>
+                </div>
+                <div class="key-row">
+                    <div class="key ws" id="keyS">S</div>
+                </div>
+            </div>
+            
+            <div class="key-group">
+                <h3>Dirección</h3>
+                <div class="key-row">
+                    <div class="key arrow" id="keyLeft">←</div>
+                    <div class="key arrow" id="keyRight">→</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-box">
+                VELOCIDAD
+                <div class="stat-value" id="speedDisplay">0 km/h</div>
+            </div>
+            <div class="stat-box">
+                DISTANCIA
+                <div class="stat-value" id="distanceDisplay">0 m</div>
+            </div>
+            <div class="stat-box">
+                CURVAS
+                <div class="stat-value" id="curvesDisplay">0</div>
+            </div>
+        </div>
+        
+        <div class="debug" id="debugInfo"></div>
+    </div>
+
+    <script>
+        // ====================
+        // Configuración inicial
+        // ====================
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const speedDisplay = document.getElementById('speedDisplay');
+        const distanceDisplay = document.getElementById('distanceDisplay');
+        const curvesDisplay = document.getElementById('curvesDisplay');
+        const debugInfo = document.getElementById('debugInfo');
+        
+        // Variables del juego
+        let position = 0;
+        let distance = 0;
+        let curves = 0;
+        let roadWidth = 2000;
+        let segments = [];
+        const segmentLength = 200;
+        const trackLength = 500;
+        let cameraHeight = 1000;
+        let cameraDepth = 0.8;
+        let playerX = 0;
+        let playerSpeed = 0;
+        let playerDirection = 0; // Dirección lateral del coche
+        
+        // Estado de las teclas
+        const keys = {
+            'w': false,
+            's': false,
+            'ArrowLeft': false,
+            'ArrowRight': false
+        };
+        
+        // Elementos de UI
+        const keyW = document.getElementById('keyW');
+        const keyS = document.getElementById('keyS');
+        const keyLeft = document.getElementById('keyLeft');
+        const keyRight = document.getElementById('keyRight');
+        
+        // =========================
+        // Funciones de inicialización
+        // =========================
+        
+        // Inicializar segmentos de la pista con curvas aleatorias (sin colinas)
+        function initSegments() {
+            segments = [];
+            let currentCurve = 0;
+            let curveLength = 0;
+            let curveCount = 0;
+            
+            for (let i = 0; i < trackLength; i++) {
+                // Generar nuevas curvas aleatoriamente
+                if (curveLength <= 0 && Math.random() < 0.02) {
+                    currentCurve = (Math.random() - 0.5) * 3; // Curva aleatoria
+                    curveLength = Math.floor(Math.random() * 100) + 50;
+                    curveCount++;
+                }
+                
+                // Reducir la longitud de la curva actual
+                if (curveLength > 0) curveLength--;
+                
+                segments.push({
+                    index: i,
+                    curve: currentCurve,
+                    hills: 0, // Sin colinas
+                    color: i % 20 < 10 ? '#555' : '#444'
+                });
+            }
+            
+            curvesDisplay.textContent = curveCount;
+        }
+        
+        // =================
+        // Funciones de dibujo
+        // =================
+        
+        // Proyectar un punto 3D a 2D
+        function project(x, y, z) {
+            if (z <= 0) z = 0.1; // Evitar división por cero
+            const scale = cameraDepth * 1000 / z;
+            const px = (x - playerX * 500) * scale + canvas.width / 2;
+            const py = y * scale + canvas.height / 2;
+            return { x: px, y: py, scale: scale };
+        }
+        
+        // Dibujar segmento de la pista con bordes suaves
+        function drawSegment(segment) {
+            const z = segment.index * segmentLength - position;
+            
+            if (z <= 0) return; // No dibujar segmentos detrás del jugador
+            
+            const nextIndex = Math.min(segment.index + 1, segments.length - 1);
+            const nextSegment = segments[nextIndex];
+            const nextZ = nextIndex * segmentLength - position;
+            
+            if (nextZ <= 0) return;
+            
+            // Calcular puntos para el segmento actual y siguiente
+            const p1 = project(segment.curve * roadWidth, segment.hills, z);
+            const p2 = project(nextSegment.curve * roadWidth, nextSegment.hills, nextZ);
+            
+            // Solo dibujar si está en el campo de visión
+            if (p1.scale <= 0 || p2.scale <= 0) return;
+            
+            // Calcular ancho de la carretera
+            const roadWidth1 = 400 * p1.scale;
+            const roadWidth2 = 400 * p2.scale;
+            
+            // Dibujar la carretera como un polígono suave
+            ctx.beginPath();
+            ctx.moveTo(canvas.width/2 - roadWidth1, p1.y);
+            ctx.lineTo(canvas.width/2 - roadWidth2, p2.y);
+            ctx.lineTo(canvas.width/2 + roadWidth2, p2.y);
+            ctx.lineTo(canvas.width/2 + roadWidth1, p1.y);
+            ctx.closePath();
+            
+            // Color del segmento
+            ctx.fillStyle = segment.color;
+            ctx.fill();
+            
+            // Dibujar bordes de la carretera
+            ctx.beginPath();
+            ctx.moveTo(canvas.width/2 - roadWidth1, p1.y);
+            ctx.lineTo(canvas.width/2 - roadWidth2, p2.y);
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 3 * p1.scale;
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(canvas.width/2 + roadWidth1, p1.y);
+            ctx.lineTo(canvas.width/2 + roadWidth2, p2.y);
+            ctx.stroke();
+            
+            // Línea central
+            ctx.beginPath();
+            ctx.moveTo(canvas.width/2, p1.y);
+            ctx.lineTo(canvas.width/2, p2.y);
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 4 * p1.scale;
+            ctx.setLineDash([30 * p1.scale, 30 * p1.scale]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+        
+        // Dibujar coche
+        function drawCar() {
+            ctx.save();
+            ctx.translate(canvas.width/2, canvas.height - 100);
+            
+            // Aplicar giro basado en la dirección del jugador
+            ctx.translate(playerX * 300, 0);
+            
+            // Cuerpo del coche
+            ctx.fillStyle = '#e74c3c';
+            ctx.beginPath();
+            ctx.moveTo(-30, -10);
+            ctx.lineTo(-25, -35);
+            ctx.lineTo(25, -35);
+            ctx.lineTo(30, -10);
+            ctx.lineTo(30, 20);
+            ctx.lineTo(-30, 20);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Ventanas
+            ctx.fillStyle = '#aed6f1';
+            ctx.beginPath();
+            ctx.moveTo(-20, -30);
+            ctx.lineTo(-20, -15);
+            ctx.lineTo(20, -15);
+            ctx.lineTo(20, -30);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Luces delanteras
+            ctx.fillStyle = '#f1c40f';
+            ctx.beginPath();
+            ctx.arc(-25, -5, 5, 0, Math.PI * 2);
+            ctx.arc(25, -5, 5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Ruedas
+            ctx.fillStyle = '#2c3e50';
+            ctx.beginPath();
+            ctx.arc(-25, 20, 10, 0, Math.PI * 2);
+            ctx.arc(25, 20, 10, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
+        }
+        
+        // Dibujar árboles laterales
+        function drawEnvironment() {
+            for (let i = 0; i < 50; i++) {
+                const z = i * 1000 - position % 1000;
+                if (z > 0) {
+                    const scale = cameraDepth * 1000 / z;
+                    const side = i % 2 === 0 ? -1 : 1;
+                    const x = side * (2000 + Math.sin(i) * 500);
+                    const treeX = x * scale + canvas.width/2;
+                    const treeY = canvas.height/2 + 50 * scale;
+                    
+                    if (treeY < canvas.height) {
+                        // Tronco
+                        ctx.fillStyle = '#8B4513';
+                        ctx.fillRect(treeX, treeY, 10 * scale, 30 * scale);
+                        
+                        // Copa del árbol
+                        ctx.fillStyle = '#2E8B57';
+                        ctx.beginPath();
+                        ctx.arc(treeX + 5 * scale, treeY - 15 * scale, 40 * scale, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+        }
+        
+        // ======================
+        // Funciones de actualización
+        // ======================
+        
+        // Actualizar la simulación
+        function update() {
+            // Actualizar velocidad según las teclas presionadas
+            if (keys['w']) playerSpeed += 0.05;
+            if (keys['s']) playerSpeed -= 0.08;
+            
+            // Actualizar dirección según las teclas de flecha
+            if (keys['ArrowLeft']) playerDirection -= 0.04;
+            if (keys['ArrowRight']) playerDirection += 0.04;
+            
+            // Aplicar fricción
+            playerSpeed *= 0.94;
+            playerDirection *= 0.85;
+            
+            // Limitar velocidad máxima
+            playerSpeed = Math.max(-3, Math.min(25, playerSpeed));
+            
+            // Limitar dirección máxima
+            playerDirection = Math.max(-1, Math.min(1, playerDirection));
+            
+            // Actualizar posición lateral del jugador
+            playerX += playerDirection * 0.05;
+            playerX = Math.max(-1, Math.min(1, playerX));
+            
+            // Actualizar posición del jugador
+            position += playerSpeed * 10;
+            distance = Math.floor(position / 10);
+            
+            // Actualizar display de velocidad
+            const displaySpeed = Math.abs(Math.round(playerSpeed * 50));
+            speedDisplay.textContent = displaySpeed + ' km/h';
+            speedDisplay.style.color = displaySpeed > 120 ? '#ff4444' : '#44ff44';
+            
+            // Actualizar distancia
+            distanceDisplay.textContent = distance + ' m';
+            
+            // Actualizar estado de las teclas en UI
+            keyW.classList.toggle('active', keys['w']);
+            keyS.classList.toggle('active', keys['s']);
+            keyLeft.classList.toggle('active', keys['ArrowLeft']);
+            keyRight.classList.toggle('active', keys['ArrowRight']);
+            
+            // Información de depuración
+            debugInfo.innerHTML = `Position: ${position.toFixed(1)}<br>
+                                  PlayerX: ${playerX.toFixed(2)}<br>
+                                  Direction: ${playerDirection.toFixed(2)}<br>
+                                  Segments: ${segments.length}`;
+        }
+        
+        // Dibujar la escena
+        function draw() {
+            // Limpiar canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Dibujar cielo
+            const skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            skyGradient.addColorStop(0, '#1e5799');
+            skyGradient.addColorStop(0.5, '#2989d8');
+            skyGradient.addColorStop(1, '#87CEEB');
+            ctx.fillStyle = skyGradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Dibujar segmentos de la pista
+            for (let i = Math.floor(position/segmentLength); i < Math.min(segments.length, Math.floor(position/segmentLength) + 100); i++) {
+                drawSegment(segments[i]);
+            }
+            
+            // Dibujar ambiente
+            drawEnvironment();
+            
+            // Dibujar coche
+            drawCar();
+            
+            // Dibujar efecto de velocidad
+            if (playerSpeed > 15) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                for (let i = 0; i < 5; i++) {
+                    const alpha = 0.3 - i * 0.05;
+                    ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+                    ctx.lineWidth = 2 + i;
+                    ctx.beginPath();
+                    ctx.moveTo(Math.random() * canvas.width, 0);
+                    ctx.lineTo(Math.random() * canvas.width, canvas.height);
+                    ctx.stroke();
+                }
+            }
+        }
+        
+        // Bucle principal del juego
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // =====================
+        // Eventos y inicialización
+        // =====================
+        
+        // Event listeners para el teclado
+        window.addEventListener('keydown', function(e) {
+            if (keys.hasOwnProperty(e.key)) {
+                keys[e.key] = true;
+                e.preventDefault();
+            }
+        });
+        
+        window.addEventListener('keyup', function(e) {
+            if (keys.hasOwnProperty(e.key)) {
+                keys[e.key] = false;
+            }
+        });
+        
+        // Controles táctiles para UI
+        function setupTouchControls() {
+            keyW.addEventListener('mousedown', () => keys['w'] = true);
+            keyW.addEventListener('mouseup', () => keys['w'] = false);
+            keyW.addEventListener('touchstart', (e) => {
+                keys['w'] = true;
+                e.preventDefault();
+            });
+            keyW.addEventListener('touchend', () => keys['w'] = false);
+            
+            keyS.addEventListener('mousedown', () => keys['s'] = true);
+            keyS.addEventListener('mouseup', () => keys['s'] = false);
+            keyS.addEventListener('touchstart', (e) => {
+                keys['s'] = true;
+                e.preventDefault();
+            });
+            keyS.addEventListener('touchend', () => keys['s'] = false);
+            
+            keyLeft.addEventListener('mousedown', () => keys['ArrowLeft'] = true);
+            keyLeft.addEventListener('mouseup', () => keys['ArrowLeft'] = false);
+            keyLeft.addEventListener('touchstart', (e) => {
+                keys['ArrowLeft'] = true;
+                e.preventDefault();
+            });
+            keyLeft.addEventListener('touchend', () => keys['ArrowLeft'] = false);
+            
+            keyRight.addEventListener('mousedown', () => keys['ArrowRight'] = true);
+            keyRight.addEventListener('mouseup', () => keys['ArrowRight'] = false);
+            keyRight.addEventListener('touchstart', (e) => {
+                keys['ArrowRight'] = true;
+                e.preventDefault();
+            });
+            keyRight.addEventListener('touchend', () => keys['ArrowRight'] = false);
+        }
+        
+        // Iniciar el juego
+        function init() {
+            initSegments();
+            setupTouchControls();
+            gameLoop();
+        }
+        
+        // Iniciar cuando el documento esté listo
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
