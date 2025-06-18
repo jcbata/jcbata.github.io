@@ -3,593 +3,452 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulador de Conducción en Primera Persona</title>
+    <title>Outrun Racing - JavaScript</title>
     <style>
-        * {
+        body {
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
+            background: #000;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
-            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #1a2a6c);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
             overflow: hidden;
-            color: white;
+            font-family: 'Arial', sans-serif;
         }
-        
-        .game-container {
+        #gameContainer {
             position: relative;
-            width: 800px;
+            width: 1024px;
+            height: 768px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.7);
+        }
+        #gameCanvas {
+            background: #000;
+        }
+        #title {
+            position: absolute;
+            top: 20px;
+            left: 0;
+            right: 0;
             text-align: center;
-            padding: 20px;
-            background: rgba(0, 0, 30, 0.7);
-            border-radius: 20px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
-            border: 2px solid #3498db;
+            color: #ff0;
+            font-size: 36px;
+            text-shadow: 0 0 10px rgba(255, 255, 0, 0.8);
+            letter-spacing: 3px;
             z-index: 10;
         }
-        
-        h1 {
-            font-size: 2.8rem;
-            margin-bottom: 15px;
-            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
-            color: #f8f8f8;
-            letter-spacing: 2px;
-            background: linear-gradient(to right, #3498db, #2ecc71);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        
-        .subtitle {
-            font-size: 1.2rem;
-            margin-bottom: 25px;
-            color: #f1c40f;
-            font-weight: 500;
-        }
-        
-        canvas {
-            background: linear-gradient(to bottom, #87CEEB 40%, #27ae60 40%);
-            border-radius: 10px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
-            display: block;
-            margin: 0 auto;
-        }
-        
-        .controls {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 25px;
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: #fff;
+            font-size: 16px;
             background: rgba(0, 0, 0, 0.7);
-            padding: 20px;
-            border-radius: 15px;
-        }
-        
-        .key-group {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        
-        .key-group h3 {
-            margin-bottom: 15px;
-            color: #3498db;
-        }
-        
-        .key-row {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 10px;
-        }
-        
-        .key {
-            width: 70px;
-            height: 70px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: #2c3e50;
-            border-radius: 10px;
-            font-size: 1.5rem;
-            font-weight: bold;
-            box-shadow: 0 5px 0 #1a2530;
-            transition: all 0.1s;
-            cursor: pointer;
-            user-select: none;
-        }
-        
-        .key.active {
-            transform: translateY(3px);
-            box-shadow: 0 2px 0 #1a2530;
-            background: #3498db;
-        }
-        
-        .key.arrow {
-            background: #e74c3c;
-        }
-        
-        .key.ws {
-            background: #2ecc71;
-        }
-        
-        .stats {
-            display: flex;
-            justify-content: center;
-            gap: 30px;
-            margin-top: 25px;
-        }
-        
-        .stat-box {
-            background: rgba(0, 0, 0, 0.5);
-            padding: 15px 30px;
-            border-radius: 50px;
-            font-size: 1.3rem;
-            min-width: 200px;
-            border: 2px solid #3498db;
-        }
-        
-        .stat-value {
-            color: #f1c40f;
-            font-weight: bold;
-            font-size: 1.8rem;
-            margin-top: 5px;
-        }
-        
-        .road-sign {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: #e74c3c;
-            padding: 15px;
-            border-radius: 10px;
-            font-weight: bold;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
-            border: 2px solid white;
-        }
-        
-        .debug {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background: rgba(0,0,0,0.7);
             padding: 10px;
             border-radius: 5px;
-            font-size: 14px;
-            color: #0f0;
+            z-index: 10;
+        }
+        .key {
+            display: inline-block;
+            background: #333;
+            color: #fff;
+            padding: 2px 10px;
+            margin: 0 5px;
+            border-radius: 4px;
+            border: 1px solid #666;
         }
     </style>
 </head>
 <body>
-    <div class="game-container">
-        <h1>SIMULADOR DE CONDUCCIÓN 3D</h1>
-        <p class="subtitle">Perspectiva en primera persona con giros izquierda/derecha</p>
-        
-        <canvas id="gameCanvas" width="800" height="500"></canvas>
-        
-        <div class="road-sign">¡CONTROLES ACTIVOS!</div>
-        
-        <div class="controls">
-            <div class="key-group">
-                <h3>Movimiento</h3>
-                <div class="key-row">
-                    <div class="key ws" id="keyW">W</div>
-                </div>
-                <div class="key-row">
-                    <div class="key ws" id="keyS">S</div>
-                </div>
-            </div>
-            
-            <div class="key-group">
-                <h3>Dirección</h3>
-                <div class="key-row">
-                    <div class="key arrow" id="keyLeft">←</div>
-                    <div class="key arrow" id="keyRight">→</div>
-                </div>
-            </div>
+    <div id="gameContainer">
+        <div id="title">OUTRUN RACING</div>
+        <canvas id="gameCanvas" width="1024" height="768"></canvas>
+        <div id="controls">
+            <span class="key">←</span> <span class="key">→</span> Dirección | 
+            <span class="key">↑</span> <span class="key">↓</span> Acelerar/Frenar |
+            <span class="key">TAB</span> Turbo | 
+            <span class="key">W</span> <span class="key">S</span> Altura cámara
         </div>
-        
-        <div class="stats">
-            <div class="stat-box">
-                VELOCIDAD
-                <div class="stat-value" id="speedDisplay">0 km/h</div>
-            </div>
-            <div class="stat-box">
-                DISTANCIA
-                <div class="stat-value" id="distanceDisplay">0 m</div>
-            </div>
-            <div class="stat-box">
-                CURVAS
-                <div class="stat-value" id="curvesDisplay">0</div>
-            </div>
-        </div>
-        
-        <div class="debug" id="debugInfo"></div>
     </div>
 
     <script>
-        // ====================
-        // Configuración inicial
-        // ====================
+        // Constantes del juego
+        const width = 1024;
+        const height = 768;
+        const roadW = 2000;
+        const segL = 200; // Longitud del segmento
+        const camD = 0.84; // Profundidad de la cámara
+
+        // Variables del juego
+        let playerX = 0;
+        let pos = 0;
+        let H = 1500;
+        let speed = 0;
+        let backgroundOffset = 0;
+        
+        // Elementos gráficos
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const speedDisplay = document.getElementById('speedDisplay');
-        const distanceDisplay = document.getElementById('distanceDisplay');
-        const curvesDisplay = document.getElementById('curvesDisplay');
-        const debugInfo = document.getElementById('debugInfo');
         
-        // Variables del juego
-        let position = 0;
-        let distance = 0;
-        let curves = 0;
-        let roadWidth = 2000;
-        let segments = [];
-        const segmentLength = 200;
-        const trackLength = 500;
-        let cameraHeight = 1000;
-        let cameraDepth = 0.8;
-        let playerX = 0;
-        let playerSpeed = 0;
-        let playerDirection = 0; // Dirección lateral del coche
-        
-        // Estado de las teclas
-        const keys = {
-            'w': false,
-            's': false,
-            'ArrowLeft': false,
-            'ArrowRight': false
+        // Simulación de imágenes
+        const textures = {
+            bg: createBackgroundTexture(),
+            objects: createObjectTextures()
         };
         
-        // Elementos de UI
-        const keyW = document.getElementById('keyW');
-        const keyS = document.getElementById('keyS');
-        const keyLeft = document.getElementById('keyLeft');
-        const keyRight = document.getElementById('keyRight');
-        
-        // =========================
-        // Funciones de inicialización
-        // =========================
-        
-        // Inicializar segmentos de la pista con curvas aleatorias (sin colinas)
-        function initSegments() {
-            segments = [];
-            let currentCurve = 0;
-            let curveLength = 0;
-            let curveCount = 0;
+        // Crear texturas programáticamente
+        function createBackgroundTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 500;
+            canvas.height = 411;
+            const ctx = canvas.getContext('2d');
             
-            for (let i = 0; i < trackLength; i++) {
-                // Generar nuevas curvas aleatoriamente
-                if (curveLength <= 0 && Math.random() < 0.02) {
-                    currentCurve = (Math.random() - 0.5) * 3; // Curva aleatoria
-                    curveLength = Math.floor(Math.random() * 100) + 50;
-                    curveCount++;
-                }
-                
-                // Reducir la longitud de la curva actual
-                if (curveLength > 0) curveLength--;
-                
-                segments.push({
-                    index: i,
-                    curve: currentCurve,
-                    hills: 0, // Sin colinas
-                    color: i % 20 < 10 ? '#555' : '#444'
-                });
-            }
+            // Montañas
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, "#1a2a6c");
+            gradient.addColorStop(0.5, "#b21f1f");
+            gradient.addColorStop(1, "#fdbb2d");
             
-            curvesDisplay.textContent = curveCount;
-        }
-        
-        // =================
-        // Funciones de dibujo
-        // =================
-        
-        // Proyectar un punto 3D a 2D
-        function project(x, y, z) {
-            if (z <= 0) z = 0.1; // Evitar división por cero
-            const scale = cameraDepth * 1000 / z;
-            const px = (x - playerX * 500) * scale + canvas.width / 2;
-            const py = y * scale + canvas.height / 2;
-            return { x: px, y: py, scale: scale };
-        }
-        
-        // Dibujar segmento de la pista con bordes suaves
-        function drawSegment(segment) {
-            const z = segment.index * segmentLength - position;
-            
-            if (z <= 0) return; // No dibujar segmentos detrás del jugador
-            
-            const nextIndex = Math.min(segment.index + 1, segments.length - 1);
-            const nextSegment = segments[nextIndex];
-            const nextZ = nextIndex * segmentLength - position;
-            
-            if (nextZ <= 0) return;
-            
-            // Calcular puntos para el segmento actual y siguiente
-            const p1 = project(segment.curve * roadWidth, segment.hills, z);
-            const p2 = project(nextSegment.curve * roadWidth, nextSegment.hills, nextZ);
-            
-            // Solo dibujar si está en el campo de visión
-            if (p1.scale <= 0 || p2.scale <= 0) return;
-            
-            // Calcular ancho de la carretera
-            const roadWidth1 = 400 * p1.scale;
-            const roadWidth2 = 400 * p2.scale;
-            
-            // Dibujar la carretera como un polígono suave
-            ctx.beginPath();
-            ctx.moveTo(canvas.width/2 - roadWidth1, p1.y);
-            ctx.lineTo(canvas.width/2 - roadWidth2, p2.y);
-            ctx.lineTo(canvas.width/2 + roadWidth2, p2.y);
-            ctx.lineTo(canvas.width/2 + roadWidth1, p1.y);
-            ctx.closePath();
-            
-            // Color del segmento
-            ctx.fillStyle = segment.color;
-            ctx.fill();
-            
-            // Dibujar bordes de la carretera
-            ctx.beginPath();
-            ctx.moveTo(canvas.width/2 - roadWidth1, p1.y);
-            ctx.lineTo(canvas.width/2 - roadWidth2, p2.y);
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 3 * p1.scale;
-            ctx.stroke();
-            
-            ctx.beginPath();
-            ctx.moveTo(canvas.width/2 + roadWidth1, p1.y);
-            ctx.lineTo(canvas.width/2 + roadWidth2, p2.y);
-            ctx.stroke();
-            
-            // Línea central
-            ctx.beginPath();
-            ctx.moveTo(canvas.width/2, p1.y);
-            ctx.lineTo(canvas.width/2, p2.y);
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 4 * p1.scale;
-            ctx.setLineDash([30 * p1.scale, 30 * p1.scale]);
-            ctx.stroke();
-            ctx.setLineDash([]);
-        }
-        
-        // Dibujar coche
-        function drawCar() {
-            ctx.save();
-            ctx.translate(canvas.width/2, canvas.height - 100);
-            
-            // Aplicar giro basado en la dirección del jugador
-            ctx.translate(playerX * 300, 0);
-            
-            // Cuerpo del coche
-            ctx.fillStyle = '#e74c3c';
-            ctx.beginPath();
-            ctx.moveTo(-30, -10);
-            ctx.lineTo(-25, -35);
-            ctx.lineTo(25, -35);
-            ctx.lineTo(30, -10);
-            ctx.lineTo(30, 20);
-            ctx.lineTo(-30, 20);
-            ctx.closePath();
-            ctx.fill();
-            
-            // Ventanas
-            ctx.fillStyle = '#aed6f1';
-            ctx.beginPath();
-            ctx.moveTo(-20, -30);
-            ctx.lineTo(-20, -15);
-            ctx.lineTo(20, -15);
-            ctx.lineTo(20, -30);
-            ctx.closePath();
-            ctx.fill();
-            
-            // Luces delanteras
-            ctx.fillStyle = '#f1c40f';
-            ctx.beginPath();
-            ctx.arc(-25, -5, 5, 0, Math.PI * 2);
-            ctx.arc(25, -5, 5, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Ruedas
-            ctx.fillStyle = '#2c3e50';
-            ctx.beginPath();
-            ctx.arc(-25, 20, 10, 0, Math.PI * 2);
-            ctx.arc(25, 20, 10, 0, Math.PI * 2);
-            ctx.fill();
-            
-            ctx.restore();
-        }
-        
-        // Dibujar árboles laterales
-        function drawEnvironment() {
-            for (let i = 0; i < 50; i++) {
-                const z = i * 1000 - position % 1000;
-                if (z > 0) {
-                    const scale = cameraDepth * 1000 / z;
-                    const side = i % 2 === 0 ? -1 : 1;
-                    const x = side * (2000 + Math.sin(i) * 500);
-                    const treeX = x * scale + canvas.width/2;
-                    const treeY = canvas.height/2 + 50 * scale;
-                    
-                    if (treeY < canvas.height) {
-                        // Tronco
-                        ctx.fillStyle = '#8B4513';
-                        ctx.fillRect(treeX, treeY, 10 * scale, 30 * scale);
-                        
-                        // Copa del árbol
-                        ctx.fillStyle = '#2E8B57';
-                        ctx.beginPath();
-                        ctx.arc(treeX + 5 * scale, treeY - 15 * scale, 40 * scale, 0, Math.PI * 2);
-                        ctx.fill();
-                    }
-                }
-            }
-        }
-        
-        // ======================
-        // Funciones de actualización
-        // ======================
-        
-        // Actualizar la simulación
-        function update() {
-            // Actualizar velocidad según las teclas presionadas
-            if (keys['w']) playerSpeed += 0.05;
-            if (keys['s']) playerSpeed -= 0.08;
-            
-            // Actualizar dirección según las teclas de flecha
-            if (keys['ArrowLeft']) playerDirection -= 0.04;
-            if (keys['ArrowRight']) playerDirection += 0.04;
-            
-            // Aplicar fricción
-            playerSpeed *= 0.94;
-            playerDirection *= 0.85;
-            
-            // Limitar velocidad máxima
-            playerSpeed = Math.max(-3, Math.min(25, playerSpeed));
-            
-            // Limitar dirección máxima
-            playerDirection = Math.max(-1, Math.min(1, playerDirection));
-            
-            // Actualizar posición lateral del jugador
-            playerX += playerDirection * 0.05;
-            playerX = Math.max(-1, Math.min(1, playerX));
-            
-            // Actualizar posición del jugador
-            position += playerSpeed * 10;
-            distance = Math.floor(position / 10);
-            
-            // Actualizar display de velocidad
-            const displaySpeed = Math.abs(Math.round(playerSpeed * 50));
-            speedDisplay.textContent = displaySpeed + ' km/h';
-            speedDisplay.style.color = displaySpeed > 120 ? '#ff4444' : '#44ff44';
-            
-            // Actualizar distancia
-            distanceDisplay.textContent = distance + ' m';
-            
-            // Actualizar estado de las teclas en UI
-            keyW.classList.toggle('active', keys['w']);
-            keyS.classList.toggle('active', keys['s']);
-            keyLeft.classList.toggle('active', keys['ArrowLeft']);
-            keyRight.classList.toggle('active', keys['ArrowRight']);
-            
-            // Información de depuración
-            debugInfo.innerHTML = `Position: ${position.toFixed(1)}<br>
-                                  PlayerX: ${playerX.toFixed(2)}<br>
-                                  Direction: ${playerDirection.toFixed(2)}<br>
-                                  Segments: ${segments.length}`;
-        }
-        
-        // Dibujar la escena
-        function draw() {
-            // Limpiar canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Dibujar cielo
-            const skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            skyGradient.addColorStop(0, '#1e5799');
-            skyGradient.addColorStop(0.5, '#2989d8');
-            skyGradient.addColorStop(1, '#87CEEB');
-            ctx.fillStyle = skyGradient;
+            ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            // Dibujar segmentos de la pista
-            for (let i = Math.floor(position/segmentLength); i < Math.min(segments.length, Math.floor(position/segmentLength) + 100); i++) {
-                drawSegment(segments[i]);
+            // Estrellas
+            ctx.fillStyle = "white";
+            for (let i = 0; i < 100; i++) {
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height * 0.6;
+                const r = Math.random() * 1.5;
+                ctx.beginPath();
+                ctx.arc(x, y, r, 0, Math.PI * 2);
+                ctx.fill();
             }
             
-            // Dibujar ambiente
-            drawEnvironment();
+            return canvas;
+        }
+        
+        function createObjectTextures() {
+            const objects = [];
             
-            // Dibujar coche
-            drawCar();
-            
-            // Dibujar efecto de velocidad
-            if (playerSpeed > 15) {
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // Crear 7 objetos diferentes
+            for (let i = 0; i < 7; i++) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 64;
+                canvas.height = 64;
+                const ctx = canvas.getContext('2d');
                 
-                for (let i = 0; i < 5; i++) {
-                    const alpha = 0.3 - i * 0.05;
-                    ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
-                    ctx.lineWidth = 2 + i;
-                    ctx.beginPath();
-                    ctx.moveTo(Math.random() * canvas.width, 0);
-                    ctx.lineTo(Math.random() * canvas.width, canvas.height);
-                    ctx.stroke();
+                // Colores base
+                const colors = [
+                    "#ff0000", "#00ff00", "#0000ff", 
+                    "#ffff00", "#ff00ff", "#00ffff", "#ffffff"
+                ];
+                
+                ctx.fillStyle = colors[i];
+                
+                // Diferentes formas para cada objeto
+                switch(i) {
+                    case 0: // Árbol
+                        ctx.beginPath();
+                        ctx.moveTo(32, 10);
+                        ctx.lineTo(10, 54);
+                        ctx.lineTo(54, 54);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.fillStyle = "#8B4513";
+                        ctx.fillRect(28, 54, 8, 10);
+                        break;
+                    case 1: // Cactus
+                        ctx.fillStyle = "#00aa00";
+                        ctx.fillRect(28, 10, 8, 54);
+                        ctx.fillRect(22, 20, 20, 8);
+                        ctx.fillRect(22, 40, 20, 8);
+                        break;
+                    case 2: // Roca
+                        ctx.beginPath();
+                        ctx.arc(32, 32, 25, 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
+                    case 3: // Coches enemigos
+                        ctx.fillStyle = "#ff5555";
+                        ctx.fillRect(15, 20, 34, 20);
+                        ctx.fillRect(10, 30, 44, 10);
+                        ctx.fillStyle = "#aaaaff";
+                        ctx.fillRect(20, 22, 8, 8);
+                        ctx.fillRect(36, 22, 8, 8);
+                        break;
+                    case 4: // Palmera
+                        ctx.fillStyle = "#8B4513";
+                        ctx.fillRect(30, 10, 4, 40);
+                        ctx.fillStyle = "#00cc00";
+                        ctx.beginPath();
+                        ctx.arc(32, 15, 15, 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
+                    case 5: // Señal de tráfico
+                        ctx.fillStyle = "#ffcc00";
+                        ctx.fillRect(22, 10, 20, 40);
+                        ctx.fillStyle = "#000";
+                        ctx.font = "bold 14px Arial";
+                        ctx.fillText("!", 30, 35);
+                        break;
+                    case 6: // Poste de luz
+                        ctx.fillStyle = "#555555";
+                        ctx.fillRect(30, 10, 4, 54);
+                        ctx.fillStyle = "#ffffaa";
+                        ctx.beginPath();
+                        ctx.arc(32, 15, 8, 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
                 }
+                
+                objects.push(canvas);
+            }
+            
+            return objects;
+        }
+        
+        // Función para dibujar cuadrilátero
+        function drawQuad(c, x1, y1, w1, x2, y2, w2) {
+            ctx.beginPath();
+            ctx.moveTo(x1 - w1, y1);
+            ctx.lineTo(x2 - w2, y2);
+            ctx.lineTo(x2 + w2, y2);
+            ctx.lineTo(x1 + w1, y1);
+            ctx.closePath();
+            ctx.fillStyle = c;
+            ctx.fill();
+        }
+        
+        // Clase Linea
+        class Line {
+            constructor() {
+                this.x = 0;
+                this.y = 0;
+                this.z = 0;
+                this.X = 0;
+                this.Y = 0;
+                this.W = 0;
+                this.curve = 0;
+                this.spriteX = 0;
+                this.clip = 0;
+                this.scale = 0;
+                this.spriteIdx = -1;
+            }
+            
+            project(camX, camY, camZ) {
+                this.scale = camD / (this.z - camZ);
+                this.X = (1 + this.scale * (this.x - camX)) * width / 2;
+                this.Y = (1 - this.scale * (this.y - camY)) * height / 2;
+                this.W = this.scale * roadW * width / 2;
+            }
+            
+            drawSprite() {
+                if (this.spriteIdx < 0) return;
+                
+                const sprite = textures.objects[this.spriteIdx];
+                const w = sprite.width;
+                const h = sprite.height;
+                
+                const destX = this.X + this.scale * this.spriteX * width / 2;
+                const destY = this.Y + 4;
+                const destW = w * this.W / 266;
+                const destH = h * this.W / 266;
+                
+                const offsetX = destW * this.spriteX;
+                const offsetY = destH * (-1);
+                
+                const finalX = destX + offsetX;
+                const finalY = destY + offsetY;
+                
+                const clipH = finalY + destH - this.clip;
+                if (clipH < 0) return;
+                if (clipH >= destH) return;
+                
+                // Dibujar sprite
+                ctx.save();
+                ctx.translate(finalX, finalY);
+                ctx.scale(destW / w, destH / h);
+                ctx.drawImage(sprite, 0, 0);
+                ctx.restore();
             }
         }
         
-        // Bucle principal del juego
-        function gameLoop() {
-            update();
-            draw();
-            requestAnimationFrame(gameLoop);
+        // Inicializar líneas de la carretera
+        const lines = [];
+        const N = 1600;
+        
+        for (let i = 0; i < N; i++) {
+            const line = new Line();
+            line.z = i * segL;
+            
+            if (i > 300 && i < 700) line.curve = 0.5;
+            if (i > 1100) line.curve = -0.7;
+            
+            if (i < 300 && i % 20 === 0) {
+                line.spriteX = -2.5;
+                line.spriteIdx = 5; // Señal de tráfico
+            }
+            if (i % 17 === 0) {
+                line.spriteX = 2.0;
+                line.spriteIdx = 6; // Poste de luz
+            }
+            if (i > 300 && i % 20 === 0) {
+                line.spriteX = -0.7;
+                line.spriteIdx = 4; // Palmera
+            }
+            if (i > 800 && i % 20 === 0) {
+                line.spriteX = -1.2;
+                line.spriteIdx = 1; // Cactus
+            }
+            if (i === 400) {
+                line.spriteX = -1.2;
+                line.spriteIdx = 3; // Coche enemigo
+            }
+            
+            if (i > 750) {
+                line.y = Math.sin(i / 30.0) * 1500;
+            }
+            
+            lines.push(line);
         }
         
-        // =====================
-        // Eventos y inicialización
-        // =====================
+        // Manejo de entrada de teclado
+        const keys = {
+            ArrowUp: false,
+            ArrowDown: false,
+            ArrowLeft: false,
+            ArrowRight: false,
+            Tab: false,
+            w: false,
+            s: false
+        };
         
-        // Event listeners para el teclado
-        window.addEventListener('keydown', function(e) {
+        window.addEventListener('keydown', (e) => {
             if (keys.hasOwnProperty(e.key)) {
                 keys[e.key] = true;
-                e.preventDefault();
             }
         });
         
-        window.addEventListener('keyup', function(e) {
+        window.addEventListener('keyup', (e) => {
             if (keys.hasOwnProperty(e.key)) {
                 keys[e.key] = false;
             }
         });
         
-        // Controles táctiles para UI
-        function setupTouchControls() {
-            keyW.addEventListener('mousedown', () => keys['w'] = true);
-            keyW.addEventListener('mouseup', () => keys['w'] = false);
-            keyW.addEventListener('touchstart', (e) => {
-                keys['w'] = true;
-                e.preventDefault();
-            });
-            keyW.addEventListener('touchend', () => keys['w'] = false);
+        // Bucle principal del juego
+        function gameLoop() {
+            // Procesar entrada
+            if (keys.ArrowRight) playerX += 0.1;
+            if (keys.ArrowLeft) playerX -= 0.1;
+            if (keys.ArrowUp) speed = 200;
+            if (keys.ArrowDown) speed = -200;
+            if (keys.Tab) speed *= 3;
+            if (keys.w) H += 100;
+            if (keys.s) H -= 100;
             
-            keyS.addEventListener('mousedown', () => keys['s'] = true);
-            keyS.addEventListener('mouseup', () => keys['s'] = false);
-            keyS.addEventListener('touchstart', (e) => {
-                keys['s'] = true;
-                e.preventDefault();
-            });
-            keyS.addEventListener('touchend', () => keys['s'] = false);
+            // Actualizar posición
+            pos += speed;
+            while (pos >= N * segL) pos -= N * segL;
+            while (pos < 0) pos += N * segL;
             
-            keyLeft.addEventListener('mousedown', () => keys['ArrowLeft'] = true);
-            keyLeft.addEventListener('mouseup', () => keys['ArrowLeft'] = false);
-            keyLeft.addEventListener('touchstart', (e) => {
-                keys['ArrowLeft'] = true;
-                e.preventDefault();
-            });
-            keyLeft.addEventListener('touchend', () => keys['ArrowLeft'] = false);
+            // Calcular posición inicial
+            const startPos = Math.floor(pos / segL);
+            const camH = lines[startPos].y + H;
             
-            keyRight.addEventListener('mousedown', () => keys['ArrowRight'] = true);
-            keyRight.addEventListener('mouseup', () => keys['ArrowRight'] = false);
-            keyRight.addEventListener('touchstart', (e) => {
-                keys['ArrowRight'] = true;
-                e.preventDefault();
-            });
-            keyRight.addEventListener('touchend', () => keys['ArrowRight'] = false);
+            // Actualizar fondo
+            if (speed > 0) backgroundOffset -= lines[startPos].curve * 2;
+            if (speed < 0) backgroundOffset += lines[startPos].curve * 2;
+            
+            // Limpiar canvas
+            ctx.clearRect(0, 0, width, height);
+            
+            // Dibujar fondo
+            ctx.fillStyle = '#1a2a6c';
+            ctx.fillRect(0, 0, width, height);
+            
+            ctx.save();
+            ctx.translate(backgroundOffset, 0);
+            ctx.drawImage(textures.bg, -2000, 0, 5000, 411);
+            ctx.restore();
+            
+            // Variables para dibujar la carretera
+            let maxy = height;
+            let x = 0;
+            let dx = 0;
+            
+            // Dibujar carretera
+            for (let n = startPos; n < startPos + 300; n++) {
+                const index = n % N;
+                const l = lines[index];
+                
+                l.project(playerX * roadW - x, camH, startPos * segL - (n >= N ? N * segL : 0));
+                x += dx;
+                dx += l.curve;
+                
+                l.clip = maxy;
+                if (l.Y >= maxy) continue;
+                maxy = l.Y;
+                
+                // Colores para la carretera
+                const grass = Math.floor(n / 3) % 2 ? "#10c810" : "#009a00";
+                const rumble = Math.floor(n / 3) % 2 ? "#ffffff" : "#000000";
+                const road = Math.floor(n / 3) % 2 ? "#6b6b6b" : "#696969";
+                
+                // Obtener línea anterior
+                const p = lines[(n - 1 + N) % N];
+                
+                // Dibujar elementos
+                drawQuad(grass, 0, p.Y, width, 0, l.Y, width);
+                drawQuad(rumble, p.X, p.Y, p.W * 1.2, l.X, l.Y, l.W * 1.2);
+                drawQuad(road, p.X, p.Y, p.W, l.X, l.Y, l.W);
+            }
+            
+            // Dibujar objetos (de atrás hacia adelante)
+            for (let n = startPos + 300; n > startPos; n--) {
+                lines[n % N].drawSprite();
+            }
+            
+            // Dibujar coche del jugador
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(width/2 - 20, height - 100, 40, 70);
+            ctx.fillStyle = '#0000ff';
+            ctx.fillRect(width/2 - 15, height - 70, 30, 40);
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(width/2 - 15, height - 30, 8, 0, Math.PI * 2);
+            ctx.arc(width/2 + 15, height - 30, 8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Dibujar HUD
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(20, 20, 200, 80);
+            ctx.fillStyle = '#fff';
+            ctx.font = '18px Arial';
+            ctx.fillText(`Velocidad: ${Math.abs(speed)} km/h`, 30, 50);
+            ctx.fillText(`Distancia: ${Math.floor(pos/1000)} km`, 30, 80);
+            
+            // Velocímetro
+            ctx.beginPath();
+            ctx.arc(100, height - 100, 50, Math.PI, Math.PI * 2);
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            
+            const speedAngle = Math.PI + (Math.abs(speed) / 300) * Math.PI;
+            ctx.beginPath();
+            ctx.moveTo(100, height - 100);
+            ctx.lineTo(100 + Math.cos(speedAngle) * 45, height - 100 + Math.sin(speedAngle) * 45);
+            ctx.strokeStyle = '#ff0';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+            
+            // Solicitar siguiente frame
+            requestAnimationFrame(gameLoop);
         }
         
         // Iniciar el juego
-        function init() {
-            initSegments();
-            setupTouchControls();
-            gameLoop();
-        }
-        
-        // Iniciar cuando el documento esté listo
-        window.addEventListener('load', init);
+        gameLoop();
     </script>
 </body>
 </html>
