@@ -994,11 +994,11 @@ class Juego {
 								
 				// Enrroque
 				let _sentidoEnroque = posDestino[1]-posOrigen[1];
-				if( (_bando > 0 && ((this.fenEnrroque.indexOf('K') >-1 && _sentidoEnroque==2) 
-						|| (this.fenEnrroque.indexOf('Q') >-1 && _sentidoEnroque==-2 ))
+				if( (_bando > 0 && this.jaqueKb == 0 && ((this.fenEnrroque.indexOf('K') >-1 && _sentidoEnroque==2) 
+						|| (this.fenEnrroque.indexOf('Q') >-1 && _sentidoEnroque==-2 )) 
 					)
 					||
-					(_bando < 0 && ((this.fenEnrroque.indexOf('k') >-1 &&  _sentidoEnroque==2) 
+					(_bando < 0 && this.jaqueKn == 0  && ((this.fenEnrroque.indexOf('k') >-1 &&  _sentidoEnroque==2) 
 						|| (this.fenEnrroque.indexOf('q') >-1 && _sentidoEnroque==-2))
 					)
 				)

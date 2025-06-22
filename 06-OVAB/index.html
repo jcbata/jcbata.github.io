@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juego de Rol - Acciones Aleatorias</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #1a2a6c);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            color: white;
+        }
+
+        .game-container {
+            width: 100%;
+            max-width: 800px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            background: linear-gradient(to right, #ff8a00, #e52e71);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            flex: 1;
+        }
+
+        .total-timer {
+            font-size: 1.2rem;
+            font-family: monospace;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 8px 15px;
+            border-radius: 10px;
+            min-width: 120px;
+        }
+
+        .screen {
+            display: none;
+            padding: 20px;
+        }
+
+        .active {
+            display: block;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #ff8a00, #e52e71);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            margin: 10px;
+            font-size: 1.2rem;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            font-weight: bold;
+            min-width: 150px;
+        }
+
+        .btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #start-screen {
+            animation: fadeIn 1s ease;
+        }
+
+        .countdown {
+            font-size: 5rem;
+            font-weight: bold;
+            margin: 30px 0;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .action-display {
+            font-size: 10rem;
+            margin: 40px 0;
+            text-shadow: 0 0 30px rgba(255, 255, 255, 0.8);
+            animation: appear 0.5s ease;
+        }
+
+        @keyframes appear {
+            0% { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .timer-display {
+            font-size: 3rem;
+            margin: 30px 0;
+            font-family: monospace;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 15px;
+            border-radius: 15px;
+            display: inline-block;
+            min-width: 250px;
+        }
+
+        .action-info {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+
+        .action-info h3 {
+            margin-bottom: 15px;
+            color: #ff8a00;
+        }
+
+        .probabilities {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .probability {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 10px;
+            min-width: 120px;
+        }
+
+        .action-name {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .action-prob {
+            font-size: 1.2rem;
+            color: #ff8a00;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 30px;
+        }
+
+        .action-explanation {
+            margin: 30px 0;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 15px;
+            text-align: left;
+        }
+
+        .action-explanation h3 {
+            margin-bottom: 15px;
+            color: #ff8a00;
+        }
+
+        .action-explanation p {
+            margin: 10px 0;
+            line-height: 1.6;
+            white-space: pre-line;
+        }
+
+        /* Animaciones específicas para cada acción */
+        .action-O {
+            color: #ff8a00;
+            animation: rotate 2s linear infinite;
+        }
+
+        .action-V {
+            color: #00ccff;
+            animation: bounce 1s infinite;
+        }
+
+        .action-A {
+            color: #00ff99;
+            animation: pulseColor 1.5s infinite;
+        }
+
+        .action-B {
+            color: #ff66ff;
+            animation: glow 1s infinite alternate;
+        }
+
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-30px); }
+        }
+
+        @keyframes pulseColor {
+            0% { text-shadow: 0 0 10px #00ff99; }
+            50% { text-shadow: 0 0 40px #00ff99; }
+            100% { text-shadow: 0 0 10px #00ff99; }
+        }
+        
+        @keyframes glow {
+            from { text-shadow: 0 0 10px #ff66ff, 0 0 20px #ff66ff; }
+            to { text-shadow: 0 0 20px #ff66ff, 0 0 30px #ff66ff; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Estilos responsivos */
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            h1 {
+                font-size: 2.0rem;
+            }
+            
+            .total-timer {
+                width: 100%;
+                font-size: 1.1rem;
+            }
+            
+            .action-display {
+                font-size: 8rem;
+            }
+            
+            .countdown {
+                font-size: 4rem;
+            }
+            
+            .timer-display {
+                font-size: 2.2rem;
+            }
+            
+            .btn {
+                padding: 12px 25px;
+                font-size: 1.1rem;
+                min-width: 130px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .game-container {
+                padding: 15px;
+            }
+            
+            h1 {
+                font-size: 1.6rem;
+            }
+            
+            .action-display {
+                font-size: 6rem;
+            }
+            
+            .countdown {
+                font-size: 3rem;
+            }
+            
+            .timer-display {
+                font-size: 1.8rem;
+                min-width: 200px;
+            }
+            
+            .btn {
+                padding: 10px 20px;
+                font-size: 1rem;
+                min-width: 110px;
+            }
+            
+            .probability {
+                min-width: 100px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="header">
+            <h1>Juego de Rol - Acciones Aleatorias</h1>
+            <div class="total-timer" id="total-timer">00:00:00</div>
+        </div>
+        
+        <div id="start-screen" class="screen active">
+            <div class="action-info">
+                <h3>¡Bienvenido al juego de rol de acciones aleatorias!</h3>
+                <p>En este juego, deberás realizar acciones que aparecerán de forma aleatoria con diferentes probabilidades:</p>
+                <div class="probabilities">
+                    <div class="probability">
+                        <div class="action-name">Acción O</div>
+                        <div class="action-prob">Oportunidad</div>
+                    </div>
+                    <div class="probability">
+                        <div class="action-name">Acción V</div>
+                        <div class="action-prob">Valentía</div>
+                    </div>
+                    <div class="probability">
+                        <div class="action-name">Acción A</div>
+                        <div class="action-prob">Apasionada(o)</div>
+                    </div>
+                    <div class="probability">
+                        <div class="action-name">Acción B</div>
+                        <div class="action-prob">Bonus</div>
+                    </div>
+                </div>
+                <p>Las acciones aparecerán cada 1-5 minutos. ¡Prepárate para la aventura!</p>
+            </div>
+            <button id="start-btn" class="btn">Iniciar Juego</button>
+        </div>
+        
+        <div id="countdown-screen" class="screen">
+            <div class="countdown" id="countdown-display">5</div>
+            <p>¡Preparate! La acción está por aparecer</p>
+            <button id="cancel-btn" class="btn">Cancelar</button>
+        </div>
+        
+        <div id="action-screen" class="screen">
+            <div class="action-display" id="action-display"></div>
+            <div class="timer-display" id="timer-display">05:00</div>
+            <div class="action-explanation" id="action-explanation"></div>
+            <div class="controls">
+                <button id="pause-btn" class="btn">Pausar</button>
+                <button id="reset-btn" class="btn">Reiniciar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Elementos del DOM
+        const startScreen = document.getElementById('start-screen');
+        const countdownScreen = document.getElementById('countdown-screen');
+        const actionScreen = document.getElementById('action-screen');
+        const startBtn = document.getElementById('start-btn');
+        const cancelBtn = document.getElementById('cancel-btn');
+        const pauseBtn = document.getElementById('pause-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const countdownDisplay = document.getElementById('countdown-display');
+        const actionDisplay = document.getElementById('action-display');
+        const timerDisplay = document.getElementById('timer-display');
+        const totalTimerDisplay = document.getElementById('total-timer');
+        const actionExplanation = document.getElementById('action-explanation');
+        
+        // Variables de estado del juego
+        let gameStarted = false;
+        let paused = false;
+        let currentAction = null;
+        let countdownInterval = null;
+        let actionTimer = null;
+        let nextActionTimeout = null;
+        let remainingTime = 0;
+        let countdownSeconds = 5;
+        let totalTime = 0; // Tiempo total en segundos
+        let totalTimerInterval = null;
+        
+        // Textos explicativos para cada acción
+        const actionExplanations = {
+            'O': 'Acción O - ¡Oportunidad única! \n\nEsta es una acción especial que requiere toda tu atención. Aprovecha esta oportunidad para tomar una decisión estratégica que podría cambiar el curso del juego.',
+            'V': 'Acción V - ¡Valentía requerida! \n\nDemuestra tu coraje enfrentando este desafío. Las acciones de valentía suelen traer grandes recompensas, pero también conllevan riesgos significativos.',
+            'A': 'Acción A - ¡Actividad apasionada(o)! \n\nEsta es la acción más apacionada en tu aventura. Mantén la concentración y realiza esta tarea con eficiencia para avanzar en tu camino.',
+            'B': 'Acción B - ¡Bonus especial! \n\n¡Has encontrado una acción bonus! Esta acción especial te brinda una oportunidad única para obtener recompensas adicionales o ventajas estratégicas.'
+        };
+        
+        // Iniciar el juego
+        startBtn.addEventListener('click', () => {
+            startGame();
+        });
+        
+        function startGame() {
+            gameStarted = true;
+            startScreen.classList.remove('active');
+            countdownScreen.classList.add('active');
+            
+            // Iniciar cronómetro total
+            startTotalTimer();
+            
+            // Primera acción siempre es 'O'
+            currentAction = 'O';
+            startCountdown();
+        }
+        
+        // Iniciar cuenta regresiva
+        function startCountdown() {
+            countdownSeconds = 5;
+            countdownDisplay.textContent = countdownSeconds;
+            
+            countdownInterval = setInterval(() => {
+                countdownSeconds--;
+                countdownDisplay.textContent = countdownSeconds;
+                
+                if (countdownSeconds <= 0) {
+                    clearInterval(countdownInterval);
+                    playActionSound(); // Reproducir sonido al cambiar de acción
+                    showAction();
+                }
+            }, 1000);
+        }
+        
+        // Reproducir sonido de cambio de acción (3 pitidos)
+        function playActionSound() {
+            const context = new (window.AudioContext || window.webkitAudioContext)();
+            let beepCount = 0;
+            
+            function playBeep() {
+                if (beepCount >= 3) return;
+                
+                const oscillator = context.createOscillator();
+                const gainNode = context.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(context.destination);
+                
+                oscillator.type = 'sine';
+                oscillator.frequency.value = 800 + (beepCount * 100);
+                gainNode.gain.value = 0.2;
+                
+                oscillator.start();
+                setTimeout(() => {
+                    oscillator.stop();
+                    beepCount++;
+                    setTimeout(playBeep, 100);
+                }, 100);
+            }
+            
+            playBeep();
+        }
+        
+        // Mostrar la acción
+        function showAction() {
+            countdownScreen.classList.remove('active');
+            actionScreen.classList.add('active');
+            
+            // Mostrar la acción con animación
+            actionDisplay.textContent = currentAction;
+            actionDisplay.className = 'action-display action-' + currentAction;
+            
+            // Mostrar explicación
+            actionExplanation.textContent = actionExplanations[currentAction];
+            
+            // Programar siguiente acción
+            scheduleNextAction();
+        }
+        
+        // Programar la siguiente acción
+        function scheduleNextAction() {
+            // Calcular tiempo aleatorio entre 1 y 5 minutos (en milisegundos)
+            const min = 1 * 60 * 1000; // 1 minuto
+            const max = 5 * 60 * 1000; // 5 minutos
+            const time = Math.floor(Math.random() * (max - min + 1) + min);
+            remainingTime = time;
+            
+            // Actualizar el cronómetro
+            updateTimerDisplay();
+            
+            // Iniciar el contador regresivo para la próxima acción
+            let startTime = Date.now();
+            
+            actionTimer = setInterval(() => {
+                if (paused) return;
+                
+                const elapsed = Date.now() - startTime;
+                remainingTime = time - elapsed;
+                
+                if (remainingTime <= 0) {
+                    clearInterval(actionTimer);
+                    chooseNextAction();
+                } else {
+                    updateTimerDisplay();
+                }
+            }, 1000);
+        }
+        
+        // Actualizar display del cronómetro
+        function updateTimerDisplay() {
+            const minutes = Math.floor(remainingTime / 60000);
+            const seconds = Math.floor((remainingTime % 60000) / 1000);
+            timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+        
+        // Elegir la próxima acción según probabilidades
+        function chooseNextAction() {
+            const rand = Math.random();
+            
+            if (rand < 0.10) { // 10% de probabilidad
+                currentAction = 'O';
+            } else if (rand < 0.25) { // 15% de probabilidad (10% + 15%)
+                currentAction = 'V';
+            } else if (rand < 0.35) { // 10% de probabilidad (25% + 10%)
+                currentAction = 'B';
+            } else { // 65% de probabilidad
+                currentAction = 'A';
+            }
+            
+            // Mostrar pantalla de cuenta regresiva
+            actionScreen.classList.remove('active');
+            countdownScreen.classList.add('active');
+            startCountdown();
+        }
+        
+        // Iniciar cronómetro total
+        function startTotalTimer() {
+            totalTime = 0;
+            updateTotalTimerDisplay();
+            
+            totalTimerInterval = setInterval(() => {
+                if (!paused) {
+                    totalTime++;
+                    updateTotalTimerDisplay();
+                }
+            }, 1000);
+        }
+        
+        // Actualizar display del cronómetro total
+        function updateTotalTimerDisplay() {
+            const hours = Math.floor(totalTime / 3600);
+            const minutes = Math.floor((totalTime % 3600) / 60);
+            const seconds = totalTime % 60;
+            totalTimerDisplay.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+        
+        // Cancelar durante la cuenta regresiva
+        cancelBtn.addEventListener('click', () => {
+            clearInterval(countdownInterval);
+            countdownScreen.classList.remove('active');
+            actionScreen.classList.add('active');
+            
+            // Si el juego estaba pausado, reanudar
+            if (paused) {
+                togglePause();
+            }
+        });
+        
+        // Pausar/reanudar el juego
+        function togglePause() {
+            paused = !paused;
+            
+            if (paused) {
+                pauseBtn.textContent = 'Reanudar';
+            } else {
+                pauseBtn.textContent = 'Pausar';
+            }
+        }
+        
+        pauseBtn.addEventListener('click', togglePause);
+        
+        // Reiniciar el juego
+        resetBtn.addEventListener('click', () => {
+            // Limpiar todos los intervalos
+            clearInterval(countdownInterval);
+            clearInterval(actionTimer);
+            clearInterval(totalTimerInterval);
+            clearTimeout(nextActionTimeout);
+            
+            // Restablecer variables
+            gameStarted = false;
+            paused = false;
+            currentAction = null;
+            remainingTime = 0;
+            totalTime = 0;
+            
+            // Volver a la pantalla de inicio
+            countdownScreen.classList.remove('active');
+            actionScreen.classList.remove('active');
+            startScreen.classList.add('active');
+            
+            // Restablecer textos
+            pauseBtn.textContent = 'Pausar';
+            totalTimerDisplay.textContent = '00:00:00';
+        });
+    </script>
+</body>
+</html>
