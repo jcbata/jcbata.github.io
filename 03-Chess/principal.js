@@ -81,11 +81,11 @@ function mouseMoved() {
 }
 
 function mousePressed() {
-
+	x = mouseX;
+	y = mouseY;
 	
 	if(tablero.posSel[0]===-1){
-		x = mouseX;
-		y = mouseY;
+
 	//fullscreen(true);
 		console.log(tablero.fCoordMouse(x,y));
 		tablero.posSel = tablero.fCoordMouse(x,y);
@@ -102,7 +102,7 @@ function mouseDragged() {
 
 	
 	
-	for(i=0;i<tablero.piezas.length;i++){
+	for(let i=0;i<tablero.piezas.length;i++){
 
 
 		tablero.piezas[i].coord = [tablero.piezas[i].pos[0]*tablero.tam,tablero.piezas[i].pos[1]*tablero.tam];
