@@ -15,6 +15,7 @@
             height: 100vh;
             overflow: hidden;
             font-family: 'Arial', sans-serif;
+            touch-action: none;
         }
         #gameContainer {
             position: relative;
@@ -36,6 +37,7 @@
             text-shadow: 0 0 10px rgba(255, 255, 0, 0.8);
             letter-spacing: 3px;
             z-index: 10;
+            pointer-events: none;
         }
         #controls {
             position: absolute;
@@ -49,6 +51,7 @@
             padding: 10px;
             border-radius: 5px;
             z-index: 10;
+            pointer-events: none;
         }
         .key {
             display: inline-block;
@@ -58,6 +61,72 @@
             margin: 0 5px;
             border-radius: 4px;
             border: 1px solid #666;
+        }
+        .touch-controls {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            z-index: 20;
+        }
+        .touch-left {
+            display: flex;
+            flex-direction: column;
+            margin-left: 20px;
+        }
+        .touch-right {
+            display: flex;
+            margin-right: 20px;
+        }
+        .touch-button {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 36px;
+            color: white;
+            margin: 10px;
+            user-select: none;
+            touch-action: none;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+        .touch-button:active {
+            background: rgba(255, 255, 255, 0.7);
+            transform: scale(0.95);
+        }
+        #speed-control {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 200px;
+            height: 30px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 15px;
+            overflow: hidden;
+            z-index: 10;
+        }
+        #speed-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #00ff00, #ffff00, #ff0000);
+            border-radius: 15px;
+            transition: width 0.2s;
+        }
+        #speed-text {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            line-height: 30px;
+            color: white;
+            font-weight: bold;
+            text-shadow: 0 0 3px black;
         }
     </style>
 </head>
@@ -71,6 +140,22 @@
             <span class="key">TAB</span> Turbo | 
             <span class="key">W</span> <span class="key">S</span> Altura cámara
         </div>
+        
+        <div id="speed-control">
+            <div id="speed-fill"></div>
+            <div id="speed-text">0 km/h</div>
+        </div>
+        
+        <div class="touch-controls">
+            <div class="touch-left">
+                <div class="touch-button" id="accelerate">↑</div>
+                <div class="touch-button" id="brake">↓</div>
+            </div>
+            <div class="touch-right">
+                <div class="touch-button" id="left">←</div>
+                <div class="touch-button" id="right">→</div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -80,17 +165,35 @@
         const roadW = 2000;
         const segL = 200; // Longitud del segmento
         const camD = 0.84; // Profundidad de la cámara
+        
+        // Parámetros de física mejorada
+        const MAX_SPEED = 500;
+        const ACCELERATION = 0.8;
+        const DECELERATION = 0.4;
+        const BRAKE_POWER = 2.5;
+        const FRICTION = 0.96;
+        const TURBO_FACTOR = 1.8;
 
         // Variables del juego
         let playerX = 0;
         let pos = 0;
         let H = 1500;
-        let speed = 0;
+        let currentSpeed = 0; // Velocidad actual (con inercia)
+        let targetSpeed = 0;  // Velocidad objetivo (según teclas)
         let backgroundOffset = 0;
+        
+        // Estado de los controles
+        let accelerating = false;
+        let braking = false;
+        let turningLeft = false;
+        let turningRight = false;
+        let turboActive = false;
         
         // Elementos gráficos
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+        const speedFill = document.getElementById('speed-fill');
+        const speedText = document.getElementById('speed-text');
         
         // Simulación de imágenes
         const textures = {
@@ -336,29 +439,99 @@
             }
         });
         
+        // Configurar controles táctiles
+        document.getElementById('accelerate').addEventListener('touchstart', () => accelerating = true);
+        document.getElementById('accelerate').addEventListener('touchend', () => accelerating = false);
+        document.getElementById('brake').addEventListener('touchstart', () => braking = true);
+        document.getElementById('brake').addEventListener('touchend', () => braking = false);
+        document.getElementById('left').addEventListener('touchstart', () => turningLeft = true);
+        document.getElementById('left').addEventListener('touchend', () => turningLeft = false);
+        document.getElementById('right').addEventListener('touchstart', () => turningRight = true);
+        document.getElementById('right').addEventListener('touchend', () => turningRight = false);
+        
+        // También para clics del mouse
+        document.getElementById('accelerate').addEventListener('mousedown', () => accelerating = true);
+        document.getElementById('accelerate').addEventListener('mouseup', () => accelerating = false);
+        document.getElementById('brake').addEventListener('mousedown', () => braking = true);
+        document.getElementById('brake').addEventListener('mouseup', () => braking = false);
+        document.getElementById('left').addEventListener('mousedown', () => turningLeft = true);
+        document.getElementById('left').addEventListener('mouseup', () => turningLeft = false);
+        document.getElementById('right').addEventListener('mousedown', () => turningRight = true);
+        document.getElementById('right').addEventListener('mouseup', () => turningRight = false);
+        
         // Bucle principal del juego
         function gameLoop() {
             // Procesar entrada
-            if (keys.ArrowRight) playerX += 0.1;
-            if (keys.ArrowLeft) playerX -= 0.1;
-            if (keys.ArrowUp) speed = 200;
-            if (keys.ArrowDown) speed = -200;
-            if (keys.Tab) speed *= 3;
+            if (keys.ArrowRight || turningRight) playerX += 0.1;
+            if (keys.ArrowLeft || turningLeft) playerX -= 0.1;
+            
+            turboActive = keys.Tab;
+            
+            // Actualizar aceleración y frenado con física mejorada
+            if (keys.ArrowUp || accelerating) {
+                // Aceleración gradual
+                targetSpeed = MAX_SPEED;
+            } else if (keys.ArrowDown || braking) {
+                // Frenado fuerte
+                targetSpeed = -MAX_SPEED * 0.6;
+            } else {
+                // Si no se presiona nada, reducir velocidad gradualmente
+                targetSpeed = 0;
+            }
+            
+            // Aplicar turbo
+            if (turboActive && targetSpeed > 0) {
+                targetSpeed *= TURBO_FACTOR;
+            }
+            
+            // Ajustar altura de la cámara
             if (keys.w) H += 100;
             if (keys.s) H -= 100;
             
+            // Actualizar velocidad con aceleración suave
+            if (targetSpeed > currentSpeed) {
+                currentSpeed += ACCELERATION;
+                if (currentSpeed > targetSpeed) currentSpeed = targetSpeed;
+            } else if (targetSpeed < currentSpeed) {
+                if (braking) {
+                    // Frenado más agresivo
+                    currentSpeed -= BRAKE_POWER;
+                } else {
+                    // Desaceleración natural
+                    currentSpeed -= DECELERATION;
+                }
+                
+                if (currentSpeed < targetSpeed) currentSpeed = targetSpeed;
+            }
+            
+            // Aplicar fricción cuando no hay aceleración
+            if (targetSpeed === 0 && currentSpeed !== 0) {
+                currentSpeed *= FRICTION;
+                if (Math.abs(currentSpeed) < 0.5) currentSpeed = 0;
+            }
+            
+            // Limitar velocidad máxima
+            if (currentSpeed > MAX_SPEED * TURBO_FACTOR) {
+                currentSpeed = MAX_SPEED * TURBO_FACTOR;
+            }
+            
             // Actualizar posición
-            pos += speed;
+            pos += currentSpeed;
             while (pos >= N * segL) pos -= N * segL;
             while (pos < 0) pos += N * segL;
+            
+            // Actualizar HUD de velocidad
+            const displaySpeed = Math.abs(Math.round(currentSpeed));
+            speedFill.style.width = (displaySpeed / (MAX_SPEED * TURBO_FACTOR)) * 100 + '%';
+            speedText.textContent = displaySpeed + " km/h";
             
             // Calcular posición inicial
             const startPos = Math.floor(pos / segL);
             const camH = lines[startPos].y + H;
             
             // Actualizar fondo
-            if (speed > 0) backgroundOffset -= lines[startPos].curve * 2;
-            if (speed < 0) backgroundOffset += lines[startPos].curve * 2;
+            if (currentSpeed > 0) backgroundOffset -= lines[startPos].curve * 2;
+            if (currentSpeed < 0) backgroundOffset += lines[startPos].curve * 2;
             
             // Limpiar canvas
             ctx.clearRect(0, 0, width, height);
@@ -425,8 +598,8 @@
             ctx.fillRect(20, 20, 200, 80);
             ctx.fillStyle = '#fff';
             ctx.font = '18px Arial';
-            ctx.fillText(`Velocidad: ${Math.abs(speed)} km/h`, 30, 50);
-            ctx.fillText(`Distancia: ${Math.floor(pos/1000)} km`, 30, 80);
+            ctx.fillText(`Distancia: ${Math.floor(pos/1000)} km`, 30, 50);
+            ctx.fillText(`Turbo: ${turboActive ? 'ON' : 'OFF'}`, 30, 80);
             
             // Velocímetro
             ctx.beginPath();
@@ -435,13 +608,26 @@
             ctx.lineWidth = 3;
             ctx.stroke();
             
-            const speedAngle = Math.PI + (Math.abs(speed) / 300) * Math.PI;
+            const speedAngle = Math.PI + (Math.abs(currentSpeed) / (MAX_SPEED * TURBO_FACTOR)) * Math.PI;
             ctx.beginPath();
             ctx.moveTo(100, height - 100);
             ctx.lineTo(100 + Math.cos(speedAngle) * 45, height - 100 + Math.sin(speedAngle) * 45);
-            ctx.strokeStyle = '#ff0';
+            ctx.strokeStyle = turboActive ? '#ff00ff' : '#ff0';
             ctx.lineWidth = 4;
             ctx.stroke();
+            
+            // Dibujar efectos de velocidad
+            if (currentSpeed > 300) {
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+                for (let i = 0; i < 20; i++) {
+                    const x = Math.random() * width;
+                    const y = Math.random() * height;
+                    const size = Math.random() * 10 + 5;
+                    ctx.beginPath();
+                    ctx.arc(x, y, size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
             
             // Solicitar siguiente frame
             requestAnimationFrame(gameLoop);
