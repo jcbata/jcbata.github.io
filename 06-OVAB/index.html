@@ -365,7 +365,7 @@
         
         <div id="action-screen" class="screen">
             <div class="action-display" id="action-display"></div>
-            <div class="timer-display" id="timer-display">05:00</div>
+            <div class="timer-display" id="timer-display">03:00</div>
             <div class="action-explanation" id="action-explanation"></div>
             <div class="controls">
                 <button id="pause-btn" class="btn">Pausar</button>
@@ -431,7 +431,7 @@
         function startCountdown() {
             countdownSeconds = 5;
             countdownDisplay.textContent = countdownSeconds;
-            
+            playActionSound();
             countdownInterval = setInterval(() => {
                 countdownSeconds--;
                 countdownDisplay.textContent = countdownSeconds;
@@ -460,13 +460,13 @@
                 
                 oscillator.type = 'sine';
                 oscillator.frequency.value = 800 + (beepCount * 100);
-                gainNode.gain.value = 0.2;
+                gainNode.gain.value = 0.8;
                 
                 oscillator.start();
                 setTimeout(() => {
                     oscillator.stop();
                     beepCount++;
-                    setTimeout(playBeep, 100);
+                    setTimeout(playBeep, 300);
                 }, 100);
             }
             
@@ -493,7 +493,7 @@
         function scheduleNextAction() {
             // Calcular tiempo aleatorio entre 1 y 5 minutos (en milisegundos)
             const min = 1 * 60 * 1000; // 1 minuto
-            const max = 5 * 60 * 1000; // 5 minutos
+            const max = 3 * 60 * 1000; // 5 minutos
             const time = Math.floor(Math.random() * (max - min + 1) + min);
             remainingTime = time;
             
