@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Outrun Racing - JavaScript</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+        }
+        #gameContainer {
+            position: relative;
+            width: 1024px;
+            height: 768px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.7);
+        }
+        #gameCanvas {
+            background: #000;
+        }
+        #title {
+            position: absolute;
+            top: 20px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: #ff0;
+            font-size: 36px;
+            text-shadow: 0 0 10px rgba(255, 255, 0, 0.8);
+            letter-spacing: 3px;
+            z-index: 10;
+        }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: #fff;
+            font-size: 16px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 10;
+        }
+        .key {
+            display: inline-block;
+            background: #333;
+            color: #fff;
+            padding: 2px 10px;
+            margin: 0 5px;
+            border-radius: 4px;
+            border: 1px solid #666;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="title">OUTRUN RACING</div>
+        <canvas id="gameCanvas" width="1024" height="768"></canvas>
+        <div id="controls">
+            <span class="key">←</span> <span class="key">→</span> Dirección | 
+            <span class="key">↑</span> <span class="key">↓</span> Acelerar/Frenar |
+            <span class="key">TAB</span> Turbo | 
+            <span class="key">W</span> <span class="key">S</span> Altura cámara
+        </div>
+    </div>
+
+    <script>
+        // Constantes del juego
+        const width = 1024;
+        const height = 768;
+        const roadW = 2000;
+        const segL = 200; // Longitud del segmento
+        const camD = 0.84; // Profundidad de la cámara
+
+        // Variables del juego
+        let playerX = 0;
+        let pos = 0;
+        let H = 1500;
+        let speed = 0;
+        let backgroundOffset = 0;
+        
+        // Elementos gráficos
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Simulación de imágenes
+        const textures = {
+            bg: createBackgroundTexture(),
+            objects: createObjectTextures()
+        };
+        
+        // Crear texturas programáticamente
+        function createBackgroundTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 500;
+            canvas.height = 411;
+            const ctx = canvas.getContext('2d');
+            
+            // Montañas
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, "#1a2a6c");
+            gradient.addColorStop(0.5, "#b21f1f");
+            gradient.addColorStop(1, "#fdbb2d");
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Estrellas
+            ctx.fillStyle = "white";
+            for (let i = 0; i < 100; i++) {
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height * 0.6;
+                const r = Math.random() * 1.5;
+                ctx.beginPath();
+                ctx.arc(x, y, r, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            return canvas;
+        }
+        
+        function createObjectTextures() {
+            const objects = [];
+            
+            // Crear 7 objetos diferentes
+            for (let i = 0; i < 7; i++) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 64;
+                canvas.height = 64;
+                const ctx = canvas.getContext('2d');
+                
+                // Colores base
+                const colors = [
+                    "#ff0000", "#00ff00", "#0000ff", 
+                    "#ffff00", "#ff00ff", "#00ffff", "#ffffff"
+                ];
+                
+                ctx.fillStyle = colors[i];
+                
+                // Diferentes formas para cada objeto
+                switch(i) {
+                    case 0: // Árbol
+                        ctx.beginPath();
+                        ctx.moveTo(32, 10);
+                        ctx.lineTo(10, 54);
+                        ctx.lineTo(54, 54);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.fillStyle = "#8B4513";
+                        ctx.fillRect(28, 54, 8, 10);
+                        break;
+                    case 1: // Cactus
+                        ctx.fillStyle = "#00aa00";
+                        ctx.fillRect(28, 10, 8, 54);
+                        ctx.fillRect(22, 20, 20, 8);
+                        ctx.fillRect(22, 40, 20, 8);
+                        break;
+                    case 2: // Roca
+                        ctx.beginPath();
+                        ctx.arc(32, 32, 25, 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
+                    case 3: // Coches enemigos
+                        ctx.fillStyle = "#ff5555";
+                        ctx.fillRect(15, 20, 34, 20);
+                        ctx.fillRect(10, 30, 44, 10);
+                        ctx.fillStyle = "#aaaaff";
+                        ctx.fillRect(20, 22, 8, 8);
+                        ctx.fillRect(36, 22, 8, 8);
+                        break;
+                    case 4: // Palmera
+                        ctx.fillStyle = "#8B4513";
+                        ctx.fillRect(30, 10, 4, 40);
+                        ctx.fillStyle = "#00cc00";
+                        ctx.beginPath();
+                        ctx.arc(32, 15, 15, 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
+                    case 5: // Señal de tráfico
+                        ctx.fillStyle = "#ffcc00";
+                        ctx.fillRect(22, 10, 20, 40);
+                        ctx.fillStyle = "#000";
+                        ctx.font = "bold 14px Arial";
+                        ctx.fillText("!", 30, 35);
+                        break;
+                    case 6: // Poste de luz
+                        ctx.fillStyle = "#555555";
+                        ctx.fillRect(30, 10, 4, 54);
+                        ctx.fillStyle = "#ffffaa";
+                        ctx.beginPath();
+                        ctx.arc(32, 15, 8, 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
+                }
+                
+                objects.push(canvas);
+            }
+            
+            return objects;
+        }
+        
+        // Función para dibujar cuadrilátero
+        function drawQuad(c, x1, y1, w1, x2, y2, w2) {
+            ctx.beginPath();
+            ctx.moveTo(x1 - w1, y1);
+            ctx.lineTo(x2 - w2, y2);
+            ctx.lineTo(x2 + w2, y2);
+            ctx.lineTo(x1 + w1, y1);
+            ctx.closePath();
+            ctx.fillStyle = c;
+            ctx.fill();
+        }
+        
+        // Clase Linea
+        class Line {
+            constructor() {
+                this.x = 0;
+                this.y = 0;
+                this.z = 0;
+                this.X = 0;
+                this.Y = 0;
+                this.W = 0;
+                this.curve = 0;
+                this.spriteX = 0;
+                this.clip = 0;
+                this.scale = 0;
+                this.spriteIdx = -1;
+            }
+            
+            project(camX, camY, camZ) {
+                this.scale = camD / (this.z - camZ);
+                this.X = (1 + this.scale * (this.x - camX)) * width / 2;
+                this.Y = (1 - this.scale * (this.y - camY)) * height / 2;
+                this.W = this.scale * roadW * width / 2;
+            }
+            
+            drawSprite() {
+                if (this.spriteIdx < 0) return;
+                
+                const sprite = textures.objects[this.spriteIdx];
+                const w = sprite.width;
+                const h = sprite.height;
+                
+                const destX = this.X + this.scale * this.spriteX * width / 2;
+                const destY = this.Y + 4;
+                const destW = w * this.W / 266;
+                const destH = h * this.W / 266;
+                
+                const offsetX = destW * this.spriteX;
+                const offsetY = destH * (-1);
+                
+                const finalX = destX + offsetX;
+                const finalY = destY + offsetY;
+                
+                const clipH = finalY + destH - this.clip;
+                if (clipH < 0) return;
+                if (clipH >= destH) return;
+                
+                // Dibujar sprite
+                ctx.save();
+                ctx.translate(finalX, finalY);
+                ctx.scale(destW / w, destH / h);
+                ctx.drawImage(sprite, 0, 0);
+                ctx.restore();
+            }
+        }
+        
+        // Inicializar líneas de la carretera
+        const lines = [];
+        const N = 1600;
+        
+        for (let i = 0; i < N; i++) {
+            const line = new Line();
+            line.z = i * segL;
+            
+            if (i > 300 && i < 700) line.curve = 0.5;
+            if (i > 1100) line.curve = -0.7;
+            
+            if (i < 300 && i % 20 === 0) {
+                line.spriteX = -2.5;
+                line.spriteIdx = 5; // Señal de tráfico
+            }
+            if (i % 17 === 0) {
+                line.spriteX = 2.0;
+                line.spriteIdx = 6; // Poste de luz
+            }
+            if (i > 300 && i % 20 === 0) {
+                line.spriteX = -0.7;
+                line.spriteIdx = 4; // Palmera
+            }
+            if (i > 800 && i % 20 === 0) {
+                line.spriteX = -1.2;
+                line.spriteIdx = 1; // Cactus
+            }
+            if (i === 400) {
+                line.spriteX = -1.2;
+                line.spriteIdx = 3; // Coche enemigo
+            }
+            
+            if (i > 750) {
+                line.y = Math.sin(i / 30.0) * 1500;
+            }
+            
+            lines.push(line);
+        }
+        
+        // Manejo de entrada de teclado
+        const keys = {
+            ArrowUp: false,
+            ArrowDown: false,
+            ArrowLeft: false,
+            ArrowRight: false,
+            Tab: false,
+            w: false,
+            s: false
+        };
+        
+        window.addEventListener('keydown', (e) => {
+            if (keys.hasOwnProperty(e.key)) {
+                keys[e.key] = true;
+            }
+        });
+        
+        window.addEventListener('keyup', (e) => {
+            if (keys.hasOwnProperty(e.key)) {
+                keys[e.key] = false;
+            }
+        });
+        
+        // Bucle principal del juego
+        function gameLoop() {
+            // Procesar entrada
+            if (keys.ArrowRight) playerX += 0.1;
+            if (keys.ArrowLeft) playerX -= 0.1;
+            if (keys.ArrowUp) speed = 200;
+            if (keys.ArrowDown) speed = -200;
+            if (keys.Tab) speed *= 3;
+            if (keys.w) H += 100;
+            if (keys.s) H -= 100;
+            
+            // Actualizar posición
+            pos += speed;
+            while (pos >= N * segL) pos -= N * segL;
+            while (pos < 0) pos += N * segL;
+            
+            // Calcular posición inicial
+            const startPos = Math.floor(pos / segL);
+            const camH = lines[startPos].y + H;
+            
+            // Actualizar fondo
+            if (speed > 0) backgroundOffset -= lines[startPos].curve * 2;
+            if (speed < 0) backgroundOffset += lines[startPos].curve * 2;
+            
+            // Limpiar canvas
+            ctx.clearRect(0, 0, width, height);
+            
+            // Dibujar fondo
+            ctx.fillStyle = '#1a2a6c';
+            ctx.fillRect(0, 0, width, height);
+            
+            ctx.save();
+            ctx.translate(backgroundOffset, 0);
+            ctx.drawImage(textures.bg, -2000, 0, 5000, 411);
+            ctx.restore();
+            
+            // Variables para dibujar la carretera
+            let maxy = height;
+            let x = 0;
+            let dx = 0;
+            
+            // Dibujar carretera
+            for (let n = startPos; n < startPos + 300; n++) {
+                const index = n % N;
+                const l = lines[index];
+                
+                l.project(playerX * roadW - x, camH, startPos * segL - (n >= N ? N * segL : 0));
+                x += dx;
+                dx += l.curve;
+                
+                l.clip = maxy;
+                if (l.Y >= maxy) continue;
+                maxy = l.Y;
+                
+                // Colores para la carretera
+                const grass = Math.floor(n / 3) % 2 ? "#10c810" : "#009a00";
+                const rumble = Math.floor(n / 3) % 2 ? "#ffffff" : "#000000";
+                const road = Math.floor(n / 3) % 2 ? "#6b6b6b" : "#696969";
+                
+                // Obtener línea anterior
+                const p = lines[(n - 1 + N) % N];
+                
+                // Dibujar elementos
+                drawQuad(grass, 0, p.Y, width, 0, l.Y, width);
+                drawQuad(rumble, p.X, p.Y, p.W * 1.2, l.X, l.Y, l.W * 1.2);
+                drawQuad(road, p.X, p.Y, p.W, l.X, l.Y, l.W);
+            }
+            
+            // Dibujar objetos (de atrás hacia adelante)
+            for (let n = startPos + 300; n > startPos; n--) {
+                lines[n % N].drawSprite();
+            }
+            
+            // Dibujar coche del jugador
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(width/2 - 20, height - 100, 40, 70);
+            ctx.fillStyle = '#0000ff';
+            ctx.fillRect(width/2 - 15, height - 70, 30, 40);
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(width/2 - 15, height - 30, 8, 0, Math.PI * 2);
+            ctx.arc(width/2 + 15, height - 30, 8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Dibujar HUD
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(20, 20, 200, 80);
+            ctx.fillStyle = '#fff';
+            ctx.font = '18px Arial';
+            ctx.fillText(`Velocidad: ${Math.abs(speed)} km/h`, 30, 50);
+            ctx.fillText(`Distancia: ${Math.floor(pos/1000)} km`, 30, 80);
+            
+            // Velocímetro
+            ctx.beginPath();
+            ctx.arc(100, height - 100, 50, Math.PI, Math.PI * 2);
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            
+            const speedAngle = Math.PI + (Math.abs(speed) / 300) * Math.PI;
+            ctx.beginPath();
+            ctx.moveTo(100, height - 100);
+            ctx.lineTo(100 + Math.cos(speedAngle) * 45, height - 100 + Math.sin(speedAngle) * 45);
+            ctx.strokeStyle = '#ff0';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+            
+            // Solicitar siguiente frame
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Iniciar el juego
+        gameLoop();
+    </script>
+</body>
+</html>
