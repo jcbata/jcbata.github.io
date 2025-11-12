@@ -1,0 +1,1597 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>F1 Extreme Racing - Sistema de Neumáticos Mejorado</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      user-select: none;
+    }
+    
+    body, html {
+      overflow: hidden;
+      font-family: 'Arial', sans-serif;
+      background: linear-gradient(to bottom, #0a0a1a, #060613);
+      height: 100%;
+      color: white;
+      touch-action: manipulation;
+    }
+    
+    canvas {
+      display: block;
+      background: #1e3c72;
+      background: linear-gradient(to bottom, #0d1b3a, #1a3c72);
+    }
+    
+    #ui {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 10;
+      text-shadow: 0 0 5px rgba(0,0,0,0.7);
+      padding: 15px;
+      background: rgba(0, 0, 0, 0.6);
+      border-radius: 12px;
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+      max-width: 300px;
+    }
+    
+    #ui div {
+      margin-bottom: 8px;
+      font-size: 18px;
+    }
+    
+    .ui-section {
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .ui-title {
+      font-weight: bold;
+      color: #ffcc00;
+      margin-bottom: 8px;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+    }
+    
+    .ui-title i {
+      margin-right: 8px;
+    }
+    
+    #controles {
+      position: absolute;
+      top: 100px;
+      left: 10px;
+      z-index: 10;
+      color: white;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 20px;
+      border-radius: 12px;
+      font-family: sans-serif;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      display: none;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+      width: 300px;
+    }
+    
+    #controles label {
+      display: block;
+      margin-bottom: 8px;
+      color: #ffcc00;
+      font-weight: bold;
+    }
+    
+    #controles input[type=number], #controles select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #444;
+      border-radius: 6px;
+      background: rgba(20, 25, 45, 0.8);
+      color: white;
+      margin-bottom: 15px;
+      font-size: 16px;
+    }
+    
+    #btnGenerar, #btnReiniciarJuego, .menu-btn, .config-btn {
+      margin-top: 10px;
+      padding: 12px 25px;
+      cursor: pointer;
+      border: none;
+      background: linear-gradient(to bottom, #ff3333, #b30000);
+      color: white;
+      border-radius: 25px;
+      font-weight: bold;
+      transition: all 0.3s;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    #btnGenerar:hover, #btnReiniciarJuego:hover, .menu-btn:hover, .config-btn:hover {
+      background: linear-gradient(to bottom, #ff5555, #cc0000);
+      transform: translateY(-3px);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.5);
+    }
+    
+    #btnReiniciarJuego {
+      position: absolute;
+      top: 80px;
+      left: 10px;
+      display: none;
+    }
+    
+    #gameOver {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 72px;
+      color: #ff3333;
+      text-shadow: 3px 3px 0 #000, 6px 6px 10px rgba(0,0,0,0.5);
+      display: none;
+      z-index: 20;
+      text-align: center;
+      font-weight: bold;
+    }
+    
+    #tituloJuego {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 42px;
+      color: #ffcc00;
+      font-weight: bold;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+      z-index: 15;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      background: rgba(0,0,0,0.6);
+      padding: 10px 30px;
+      border-radius: 50px;
+      backdrop-filter: blur(5px);
+      border: 1px solid rgba(255,204,0,0.3);
+    }
+    
+    #mensajePista {
+      position: absolute;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: white;
+      font-weight: bold;
+      font-size: 20px;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+      z-index: 10;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 10px 25px;
+      border-radius: 30px;
+      backdrop-filter: blur(5px);
+      border: 1px solid rgba(255,255,255,0.1);
+      text-align: center;
+      min-width: 350px;
+    }
+    
+    #mensajeFinal {
+      position: absolute;
+      top: 60%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 32px;
+      color: #00ff99;
+      text-align: center;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+      z-index: 21;
+      display: none;
+      background: rgba(0, 0, 0, 0.8);
+      padding: 30px 50px;
+      border-radius: 20px;
+      width: 90%;
+      max-width: 700px;
+      backdrop-filter: blur(15px);
+      border: 2px solid rgba(0, 255, 153, 0.3);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+    }
+    
+    #velocimetro {
+      position: absolute;
+      bottom: 30px;
+      right: 30px;
+      width: 200px;
+      height: 200px;
+      z-index: 10;
+    }
+    
+    #menuInicio {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(10, 20, 40, 0.97);
+      padding: 40px;
+      border-radius: 20px;
+      z-index: 100;
+      text-align: center;
+      width: 90%;
+      max-width: 600px;
+      backdrop-filter: blur(15px);
+      border: 2px solid rgba(255, 204, 0, 0.5);
+      box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+    }
+    
+    #menuInicio h1 {
+      color: #ffcc00;
+      font-size: 42px;
+      margin-bottom: 20px;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      text-shadow: 0 0 15px rgba(255, 204, 0, 0.5);
+    }
+    
+    #menuInicio p {
+      margin-bottom: 25px;
+      line-height: 1.6;
+      color: #ddd;
+      font-size: 18px;
+    }
+    
+    .dificultad {
+      margin: 20px 0;
+      padding: 20px;
+      background: rgba(30, 40, 60, 0.7);
+      border-radius: 15px;
+      cursor: pointer;
+      transition: all 0.3s;
+      border: 2px solid transparent;
+      text-align: left;
+    }
+    
+    .dificultad:hover {
+      background: rgba(40, 50, 80, 0.8);
+      border-color: #ffcc00;
+      transform: translateY(-3px);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+    }
+    
+    .dificultad.active {
+      border-color: #ffcc00;
+      background: rgba(50, 60, 90, 0.8);
+      box-shadow: 0 0 15px rgba(255, 204, 0, 0.5);
+    }
+    
+    .dificultad h3 {
+      color: #ffcc00;
+      margin-bottom: 10px;
+      font-size: 22px;
+      display: flex;
+      align-items: center;
+    }
+    
+    .dificultad h3 i {
+      margin-right: 10px;
+    }
+    
+    #dañoBarra {
+      width: 200px;
+      height: 20px;
+      background: rgba(100, 0, 0, 0.5);
+      border-radius: 10px;
+      margin-top: 5px;
+      overflow: hidden;
+      border: 1px solid #500;
+    }
+    
+    #dañoProgreso {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(to right, #ff3300, #ff9900);
+      border-radius: 10px;
+      transition: width 0.3s;
+    }
+    
+    .indicador-vuelta {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 12px 20px;
+      border-radius: 20px;
+      font-weight: bold;
+      backdrop-filter: blur(5px);
+      border: 1px solid rgba(255,255,255,0.1);
+      min-width: 180px;
+      text-align: center;
+    }
+    
+    #tiempoActual {
+      font-size: 26px;
+      letter-spacing: 2px;
+      color: #00ffcc;
+      font-family: 'Courier New', monospace;
+    }
+    
+    #mejorVuelta {
+      font-size: 16px;
+      color: #ffcc00;
+      margin-top: 5px;
+    }
+    
+    .neumatico {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #333;
+      border: 3px solid #555;
+      box-shadow: 0 0 5px rgba(0,0,0,0.5);
+    }
+    
+    #neumatico-delantero-izq {
+      top: 35px;
+      left: 25px;
+    }
+    
+    #neumatico-delantero-der {
+      top: 35px;
+      right: 25px;
+    }
+    
+    #neumatico-trasero-izq {
+      bottom: 10px;
+      left: 25px;
+    }
+    
+    #neumatico-trasero-der {
+      bottom: 10px;
+      right: 25px;
+    }
+    
+    .neumatico-desgaste {
+      position: absolute;
+      bottom: -5px;
+      width: 100%;
+      height: 3px;
+      background: #ffcc00;
+      border-radius: 2px;
+    }
+    
+    #contadorVueltas {
+      position: absolute;
+      bottom: 30px;
+      left: 30px;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 12px 25px;
+      border-radius: 20px;
+      font-size: 20px;
+      backdrop-filter: blur(5px);
+      border: 1px solid rgba(255,255,255,0.1);
+      min-width: 160px;
+      text-align: center;
+    }
+    
+    .efecto-derrape {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      height: 100px;
+      background: rgba(255, 255, 255, 0.1);
+      display: none;
+      z-index: 5;
+      pointer-events: none;
+    }
+    
+    #instrucciones {
+      margin-top: 20px;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 12px 15px;
+      border-radius: 10px;
+      font-size: 14px;
+      text-align: center;
+      border: 1px solid rgba(255,255,255,0.1);
+      width: 100%;
+    }
+    
+    .pista-info {
+      position: absolute;
+      top: 120px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.6);
+      padding: 10px 20px;
+      border-radius: 20px;
+      font-size: 18px;
+      backdrop-filter: blur(5px);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .indicador-curva {
+      position: absolute;
+      top: 160px;
+      left: 20px;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 12px 20px;
+      border-radius: 20px;
+      font-size: 18px;
+      backdrop-filter: blur(5px);
+      display: none;
+      border: 1px solid rgba(255,255,255,0.1);
+      animation: pulse 1s infinite;
+    }
+    
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+    
+    .efecto-clima {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 9;
+    }
+    
+    .gotalluvia {
+      position: absolute;
+      width: 2px;
+      height: 15px;
+      background: rgba(200, 200, 255, 0.5);
+    }
+    
+    .config-btn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      padding: 10px 15px;
+      z-index: 15;
+    }
+    
+    .neumatico-status {
+      position: absolute;
+      top: 35px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 10px 15px;
+      border-radius: 20px;
+      font-size: 14px;
+      backdrop-filter: blur(5px);
+      border: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .neumatico-status div {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    
+    .neumatico-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+    
+    .drs-indicator {
+      position: absolute;
+      top: 80px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 8px 15px;
+      border-radius: 20px;
+      font-size: 14px;
+      backdrop-filter: blur(5px);
+      border: 1px solid rgba(255,255,255,0.1);
+      display: none;
+    }
+    
+    .drs-active {
+      background: linear-gradient(to right, #00cc66, #00aa44);
+      color: white;
+    }
+    
+    #estadisticas {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.9);
+      padding: 30px;
+      border-radius: 20px;
+      z-index: 25;
+      width: 90%;
+      max-width: 800px;
+      display: none;
+      backdrop-filter: blur(20px);
+      border: 2px solid rgba(255, 204, 0, 0.5);
+      box-shadow: 0 0 40px rgba(0,0,0,0.9);
+    }
+    
+    #estadisticas h2 {
+      color: #ffcc00;
+      text-align: center;
+      margin-bottom: 25px;
+      font-size: 32px;
+    }
+    
+    .estadisticas-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+    
+    .estadistica-item {
+      background: rgba(30, 40, 60, 0.7);
+      padding: 15px;
+      border-radius: 10px;
+      border-left: 4px solid #ffcc00;
+    }
+    
+    .estadistica-item h3 {
+      color: #ffcc00;
+      margin-bottom: 10px;
+      font-size: 20px;
+    }
+    
+    .estadistica-valor {
+      font-size: 24px;
+      font-weight: bold;
+      color: white;
+      font-family: 'Courier New', monospace;
+    }
+    
+    #btnCerrarEstadisticas {
+      display: block;
+      margin: 25px auto 0;
+      background: linear-gradient(to bottom, #ff3333, #b30000);
+    }
+    
+    .lap-time {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .lap-time.best {
+      color: #ffcc00;
+      font-weight: bold;
+    }
+    
+    .temp-indicator {
+      position: absolute;
+      top: 150px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 8px 15px;
+      border-radius: 20px;
+      font-size: 14px;
+      backdrop-filter: blur(5px);
+      border: 1px solid rgba(255,255,255,0.1);
+      display: none;
+    }
+  </style>
+</head>
+<body>
+<div id="tituloJuego">F1 Extreme Racing</div>
+<div id="ui">
+  <div class="ui-section">
+    <div class="ui-title"><i class="fas fa-car-crash"></i> ESTADO DEL AUTO</div>
+    <div>Velocidad: <span id="velocidad">0</span> km/h</div>
+    <div>Daño: <span id="dañoPorcentaje">0%</span></div>
+    <div id="dañoBarra"><div id="dañoProgreso"></div></div>
+  </div>
+  <div class="ui-section">
+    <div class="ui-title"><i class="fas fa-tachometer-alt"></i> NEUMÁTICOS</div>
+    <div>Desgaste: <span id="desgasteNeumaticos">0%</span></div>
+    <div>Temp: <span id="tempNeumaticos">80°C</span></div>
+    <div id="tempInfo">Estado: <span id="estadoNeumaticos">Óptimo</span></div>
+  </div>
+  <div class="ui-section">
+    <div class="ui-title"><i class="fas fa-wind"></i> CLIMA</div>
+    <div>Condición: <span id="condicionClima">Soleado</span></div>
+    <div>Temp pista: <span id="tempPista">35°C</span></div>
+  </div>
+  
+  <!-- Instrucciones movidas debajo de la información del clima -->
+  <div id="instrucciones">
+    CONTROLES: ↑ Acelerar | ↓ Frenar | ← → Dirección | D DRS | R Reiniciar
+  </div>
+</div>
+
+<div id="controles">
+  <h3 style="color:#ffcc00; text-align:center; margin-bottom:20px;"><i class="fas fa-cog"></i> CONFIGURACIÓN</h3>
+  
+  <label for="distancia">Distancia pista (km):</label>
+  <input type="number" id="distancia" min="1" max="500" value="5" />
+  
+  <label for="vueltas">Número de vueltas:</label>
+  <input type="number" id="vueltas" min="1" max="10" value="3" />
+  
+  <label for="clima">Condiciones climáticas:</label>
+  <select id="clima">
+    <option value="soleado">Soleado</option>
+    <option value="nublado">Nublado</option>
+    <option value="lluvia">Lluvia ligera</option>
+    <option value="lluviaFuerte">Lluvia fuerte</option>
+  </select>
+  
+  <label for="neumaticos">Tipo de neumáticos:</label>
+  <select id="neumaticos">
+    <option value="blando">Blandos (máx. velocidad)</option>
+    <option value="medio">Medios (equilibrado)</option>
+    <option value="duro">Duros (máx. duración)</option>
+    <option value="lluvia">Lluvia</option>
+  </select>
+  
+  <button id="btnGenerar">Generar pista</button>
+</div>
+
+<button id="btnReiniciarJuego">Reiniciar juego</button>
+<button class="config-btn" id="btnConfig"><i class="fas fa-cog"></i></button>
+<div id="gameOver">¡FIN DEL JUEGO!</div>
+<div id="mensajeFinal">¡Felicidades! Has terminado la carrera en tiempo récord.</div>
+<canvas id="canvas"></canvas>
+<div class="efecto-clima" id="efectoClima"></div>
+
+<div id="velocimetro">
+  <canvas id="velocimetroCanvas" width="200" height="200"></canvas>
+</div>
+
+<div class="indicador-vuelta">
+  <div id="tiempoActual">00:00.000</div>
+  <div id="mejorVuelta">Mejor: --:--.---</div>
+</div>
+
+<div id="contadorVueltas">
+  Vuelta: <span id="vueltaActual">1</span>/<span id="vueltasTotales">3</span>
+</div>
+
+<div class="neumatico-status">
+  <div><div class="neumatico-color" style="background:#ffcc00;"></div> FL: <span id="neumFL">100%</span></div>
+  <div><div class="neumatico-color" style="background:#ffcc00;"></div> FR: <span id="neumFR">100%</span></div>
+  <div><div class="neumatico-color" style="background:#ffcc00;"></div> RL: <span id="neumRL">100%</span></div>
+  <div><div class="neumatico-color" style="background:#ffcc00;"></div> RR: <span id="neumRR">100%</span></div>
+</div>
+
+<div class="drs-indicator" id="drsIndicator">DRS DESACTIVADO</div>
+<div class="temp-indicator" id="tempIndicator">Temperatura: Estable</div>
+
+<div class="efecto-derrape" id="efectoDerrape"></div>
+<div class="indicador-curva" id="indicadorCurva">¡Curva pronunciada!</div>
+
+<div id="menuInicio">
+  <h1>F1 Extreme Racing</h1>
+  <p>Controla tu monoplaza de F1 y completa la carrera en el menor tiempo posible. ¡Evita salirte de la pista y gestiona tus neumáticos!</p>
+  
+  <div class="dificultad active" data-dificultad="facil">
+    <h3><i class="fas fa-flag"></i> FÁCIL</h3>
+    <p>Velocidad máxima: 250 km/h<br>Daño reducido | Desgaste lento</p>
+  </div>
+  
+  <div class="dificultad" data-dificultad="normal">
+    <h3><i class="fas fa-flag-checkered"></i> NORMAL</h3>
+    <p>Velocidad máxima: 300 km/h<br>Daño estándar | Desgaste medio</p>
+  </div>
+  
+  <div class="dificultad" data-dificultad="dificil">
+    <h3><i class="fas fa-skull"></i> DIFÍCIL</h3>
+    <p>Velocidad máxima: 350 km/h<br>Daño aumentado | Desgaste rápido</p>
+  </div>
+  
+  <button class="menu-btn" id="btnComenzar">COMENZAR CARRERA</button>
+</div>
+
+<div id="estadisticas">
+  <h2><i class="fas fa-chart-line"></i> ESTADÍSTICAS DE CARRERA</h2>
+  
+  <div class="estadisticas-grid">
+    <div class="estadistica-item">
+      <h3>Tiempo Total</h3>
+      <div class="estadistica-valor" id="est-tiempoTotal">00:00.000</div>
+    </div>
+    
+    <div class="estadistica-item">
+      <h3>Mejor Vuelta</h3>
+      <div class="estadistica-valor" id="est-mejorVuelta">00:00.000</div>
+    </div>
+    
+    <div class="estadistica-item">
+      <h3>Velocidad Máxima</h3>
+      <div class="estadistica-valor" id="est-velocidadMax">0 km/h</div>
+    </div>
+    
+    <div class="estadistica-item">
+      <h3>Daño Total</h3>
+      <div class="estadistica-valor" id="est-danoTotal">0%</div>
+    </div>
+    
+    <div class="estadistica-item" style="grid-column: span 2;">
+      <h3>Tiempos por Vuelta</h3>
+      <div id="est-tiemposVueltas">
+        <div class="lap-time">Vuelta 1: <span>--:--.---</span></div>
+        <div class="lap-time">Vuelta 2: <span>--:--.---</span></div>
+        <div class="lap-time">Vuelta 3: <span>--:--.---</span></div>
+      </div>
+    </div>
+  </div>
+  
+  <button class="menu-btn" id="btnCerrarEstadisticas">CERRAR</button>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const velocidadimetroCanvas = document.getElementById('velocimetroCanvas');
+  const velocimetroCtx = velocidadimetroCanvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  // Variables del juego
+  let velocidad = 0;
+  let anguloObjetivo = 0;
+  let anguloActual = 0;
+  let posicionX = 0;
+  let desplazamiento = 0;
+  let velocidadX = 0;
+  const friccion = 0.92;
+  const friccionLateral = 0.85;
+
+  const auto = { color: '#FF1801', width: 80, height: 40 };
+  const rueda = { ancho: 40, alto: 38 };
+  const separacionRueda = 10;
+  const roadWidthBase = canvas.width * 0.6;
+  const horizon = canvas.height / 2;
+
+  let mapaPista = [];
+  let indiceMapa = 0;
+  let frameActual = 0;
+  const framesPorSegmentoBase = 80;
+  let keys = {};
+  let finJuego = false;
+  let daño = 0;
+  let tiempoInicio = 0;
+  let mejorTiempo = Infinity;
+  let vueltaActual = 1;
+  let vueltasTotales = 3;
+  let tiempoVueltaInicio = 0;
+  let dificultad = 'facil';
+  let velocidadMaxima = 250;
+  let anguloAuto = 0;
+  let fuerzaCentrifuga = 0;
+  let desgasteNeumaticos = 0;
+  let tempNeumaticos = 80;
+  let clima = 'soleado';
+  let tipoNeumaticos = 'blando';
+  let drsActivado = false;
+  let tiemposVueltas = [];
+  let velocidadMaximaAlcanzada = 0;
+  let gotasLluvia = [];
+  let tempIndicatorTimeout;
+  let lastLeftPoints = [];
+  let lastRightPoints = [];
+
+  // Event listeners para controles
+  window.addEventListener('keydown', e => {
+    keys[e.key] = true;
+    
+    // Tecla R para reiniciar
+    if (e.key === 'r' || e.key === 'R') {
+      reiniciarJuego();
+    }
+    
+    // Tecla D para DRS
+    if ((e.key === 'd' || e.key === 'D') && velocidad > 200 && !drsActivado) {
+      drsActivado = true;
+      document.getElementById('drsIndicator').textContent = 'DRS ACTIVADO';
+      document.getElementById('drsIndicator').classList.add('drs-active');
+      document.getElementById('drsIndicator').style.display = 'block';
+    }
+  });
+
+  window.addEventListener('keyup', e => {
+    keys[e.key] = false;
+    
+    if ((e.key === 'd' || e.key === 'D') && drsActivado) {
+      drsActivado = false;
+      document.getElementById('drsIndicator').textContent = 'DRS DESACTIVADO';
+      document.getElementById('drsIndicator').classList.remove('drs-active');
+      setTimeout(() => {
+        document.getElementById('drsIndicator').style.display = 'none';
+      }, 2000);
+    }
+  });
+
+  document.getElementById('btnGenerar').addEventListener('click', () => {
+    const distanciaKm = parseInt(document.getElementById('distancia').value);
+    vueltasTotales = parseInt(document.getElementById('vueltas').value);
+    clima = document.getElementById('clima').value;
+    tipoNeumaticos = document.getElementById('neumaticos').value;
+    
+    if (isNaN(distanciaKm) || distanciaKm < 1 || distanciaKm > 500) return;
+    if (isNaN(vueltasTotales) || vueltasTotales < 1 || vueltasTotales > 10) return;
+    
+    iniciarJuego(distanciaKm);
+    document.getElementById('controles').style.display = 'none';
+    document.getElementById('btnReiniciarJuego').style.display = 'block';
+    document.getElementById('btnConfig').style.display = 'block';
+  });
+
+  document.getElementById('btnReiniciarJuego').addEventListener('click', reiniciarJuego);
+  document.getElementById('btnConfig').addEventListener('click', () => {
+    document.getElementById('controles').style.display = 'block';
+  });
+  
+  document.getElementById('btnCerrarEstadisticas').addEventListener('click', () => {
+    document.getElementById('estadisticas').style.display = 'none';
+    reiniciarJuego();
+  });
+
+  document.getElementById('btnComenzar').addEventListener('click', () => {
+    document.getElementById('menuInicio').style.display = 'none';
+    iniciarJuego(5);
+    document.getElementById('btnConfig').style.display = 'block';
+  });
+
+  document.querySelectorAll('.dificultad').forEach(el => {
+    el.addEventListener('click', () => {
+      document.querySelectorAll('.dificultad').forEach(d => {
+        d.classList.remove('active');
+        d.style.borderColor = 'transparent';
+      });
+      
+      el.classList.add('active');
+      el.style.borderColor = '#ffcc00';
+      dificultad = el.dataset.dificultad;
+      
+      switch(dificultad) {
+        case 'facil': 
+          velocidadMaxima = 250; 
+          break;
+        case 'normal': 
+          velocidadMaxima = 300; 
+          break;
+        case 'dificil': 
+          velocidadMaxima = 350; 
+          break;
+      }
+    });
+  });
+
+  function reiniciarJuego() {
+    const distanciaKm = parseInt(document.getElementById('distancia').value) || 5;
+    vueltasTotales = parseInt(document.getElementById('vueltas').value) || 3;
+    iniciarJuego(distanciaKm);
+  }
+
+  function iniciarJuego(distanciaKm) {
+    mapaPista = generarMapa(distanciaKm);
+    indiceMapa = 0;
+    frameActual = 0;
+    anguloObjetivo = 0;
+    anguloActual = 0;
+    desplazamiento = 0;
+    posicionX = 0;
+    velocidad = 0;
+    velocidadX = 0;
+    finJuego = false;
+    daño = 0;
+    vueltaActual = 1;
+    anguloAuto = 0;
+    desgasteNeumaticos = 0;
+    tempNeumaticos = 80;
+    drsActivado = false;
+    tiemposVueltas = [];
+    velocidadMaximaAlcanzada = 0;
+    gotasLluvia = [];
+    tiempoInicio = Date.now();
+    tiempoVueltaInicio = Date.now();
+    actualizarDaño();
+    actualizarNeumaticos();
+    crearGotasLluvia();
+    clearTimeout(tempIndicatorTimeout);
+    lastLeftPoints = [];
+    lastRightPoints = [];
+    
+    document.getElementById('gameOver').style.display = 'none';
+    document.getElementById('mensajeFinal').style.display = 'none';
+    document.getElementById('efectoDerrape').style.display = 'none';
+    document.getElementById('indicadorCurva').style.display = 'none';
+    document.getElementById('drsIndicator').style.display = 'none';
+    document.getElementById('tempIndicator').style.display = 'none';
+    document.getElementById('estadisticas').style.display = 'none';
+    
+    const nombreAleatorio = nombresPistas[Math.floor(Math.random() * nombresPistas.length)];
+    
+    const mensajePistaElement = document.getElementById('mensajePista');
+    if (mensajePistaElement) {
+      mensajePistaElement.textContent = `Pista: ${nombreAleatorio} | Dificultad: ${dificultad.toUpperCase()} | Clima: ${clima.toUpperCase()}`;
+    }
+    
+    document.getElementById('condicionClima').textContent = clima;
+    document.getElementById('vueltaActual').textContent = vueltaActual;
+    document.getElementById('vueltasTotales').textContent = vueltasTotales;
+  }
+
+  function generarMapa(distanciaKm) {
+    const elementos = distanciaKm * 10;
+    const opciones = ['frente', 'izquierda', 'derecha'];
+    const nuevoMapa = [];
+    
+    for (let i = 0; i < elementos; i++) {
+      const ultimo = nuevoMapa[i-1];
+      let eleccion;
+      
+      if (ultimo === 'izquierda' || ultimo === 'derecha') {
+        eleccion = Math.random() < 0.7 ? 'frente' : opciones[Math.floor(Math.random() * 2) + 1];
+      } else {
+        eleccion = opciones[Math.floor(Math.random() * 3)];
+      }
+      nuevoMapa.push(eleccion);
+    }
+    
+    return nuevoMapa;
+  }
+
+  function crearGotasLluvia() {
+    gotasLluvia = [];
+    if (clima === 'lluvia' || clima === 'lluviaFuerte') {
+      const cantidad = clima === 'lluvia' ? 100 : 200;
+      for (let i = 0; i < cantidad; i++) {
+        gotasLluvia.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          length: 10 + Math.random() * 20,
+          speed: 5 + Math.random() * 10
+        });
+      }
+    }
+  }
+
+  function dibujarLluvia() {
+    if (clima === 'lluvia' || clima === 'lluviaFuerte') {
+      const efectoClima = document.getElementById('efectoClima');
+      efectoClima.innerHTML = '';
+      
+      gotasLluvia.forEach(gota => {
+        const gotaElement = document.createElement('div');
+        gotaElement.className = 'gotalluvia';
+        gotaElement.style.left = `${gota.x}px`;
+        gotaElement.style.top = `${gota.y}px`;
+        gotaElement.style.height = `${gota.length}px`;
+        efectoClima.appendChild(gotaElement);
+        
+        // Mover gota
+        gota.y += gota.speed;
+        if (gota.y > canvas.height) {
+          gota.y = -20;
+          gota.x = Math.random() * canvas.width;
+        }
+      });
+    }
+  }
+
+  function actualizarNeumaticos() {
+    // Calcular velocidad relativa (porcentaje de la velocidad máxima)
+    const velocidadRelativa = velocidad / velocidadMaxima;
+    
+    // DESGASTE: Solo cuando la velocidad es >= 95% de la máxima
+    if (velocidadRelativa >= 0.95) {
+      const desgasteBase = 
+        tipoNeumaticos === 'blando' ? 0.03 : 
+        tipoNeumaticos === 'medio' ? 0.02 : 
+        tipoNeumaticos === 'duro' ? 0.01 : 0.008;
+      
+      const desgastePorCurva = Math.abs(velocidadX) > 1 ? Math.abs(velocidadX) * 0.02 : 0;
+      const desgastePorClima = clima.includes('lluvia') ? 0.01 : 0;
+      
+      desgasteNeumaticos = Math.min(100, desgasteNeumaticos + desgasteBase + desgastePorCurva + desgastePorClima);
+    }
+    
+    // TEMPERATURA: Comportamiento basado en la velocidad
+    if (velocidadRelativa < 0.5) {
+      // Enfriamiento cuando la velocidad es baja (<50%)
+      tempNeumaticos = Math.max(60, tempNeumaticos - 0.1);
+      
+      // Mostrar indicador de enfriamiento
+      if (Math.random() < 0.02) {
+        mostrarIndicadorTemperatura('ENFRIANDO', '#0066cc');
+      }
+    } else if (velocidadRelativa >= 0.95) {
+      // Calentamiento cuando la velocidad es alta (>=95%)
+      tempNeumaticos = Math.min(130, tempNeumaticos + 0.15);
+      
+      // Mostrar indicador de calentamiento
+      if (Math.random() < 0.05) {
+        mostrarIndicadorTemperatura('CALENTANDO', '#ff3300');
+      }
+    } else {
+      // Mantenimiento de temperatura (50%-95%)
+      // Oscilación leve para simular equilibrio
+      tempNeumaticos = Math.min(130, Math.max(60, tempNeumaticos + (Math.random() - 0.5) * 0.05));
+    }
+    
+    // Actualizar UI
+    document.getElementById('desgasteNeumaticos').textContent = `${Math.round(desgasteNeumaticos)}%`;
+    document.getElementById('tempNeumaticos').textContent = `${Math.round(tempNeumaticos)}°C`;
+    
+    // Actualizar estado de los neumáticos
+    let estado = 'Óptimo';
+    if (tempNeumaticos < 70) estado = 'Frío';
+    if (tempNeumaticos > 100) estado = 'Caliente';
+    if (tempNeumaticos > 110) estado = 'Peligroso';
+    document.getElementById('estadoNeumaticos').textContent = estado;
+    
+    // Actualizar neumáticos individuales
+    const desgasteFrontal = desgasteNeumaticos * (Math.abs(velocidadX) > 1 ? 1.2 : 1);
+    const desgasteTrasero = desgasteNeumaticos * (velocidad > 150 ? 1.1 : 1);
+    
+    document.getElementById('neumFL').textContent = `${Math.max(0, 100 - Math.round(desgasteFrontal * 1.1))}%`;
+    document.getElementById('neumFR').textContent = `${Math.max(0, 100 - Math.round(desgasteFrontal * 1.1))}%`;
+    document.getElementById('neumRL').textContent = `${Math.max(0, 100 - Math.round(desgasteTrasero * 0.9))}%`;
+    document.getElementById('neumRR').textContent = `${Math.max(0, 100 - Math.round(desgasteTrasero * 0.9))}%`;
+    
+    // Cambiar color según temperatura
+    const color = 
+      tempNeumaticos < 80 ? '#0066cc' : 
+      tempNeumaticos < 100 ? '#00cc66' : 
+      tempNeumaticos < 110 ? '#ffcc00' : '#ff3300';
+    
+    document.querySelectorAll('.neumatico-color').forEach(el => {
+      el.style.background = color;
+    });
+    
+    // Efecto en el rendimiento
+    const rendimiento = 1 - (desgasteNeumaticos / 200);
+    return Math.max(0.5, rendimiento);
+  }
+
+  function mostrarIndicadorTemperatura(texto, color) {
+    const tempIndicator = document.getElementById('tempIndicator');
+    tempIndicator.textContent = `Temperatura: ${texto}`;
+    tempIndicator.style.background = color;
+    tempIndicator.style.display = 'block';
+    
+    clearTimeout(tempIndicatorTimeout);
+    tempIndicatorTimeout = setTimeout(() => {
+      tempIndicator.style.display = 'none';
+    }, 2000);
+  }
+
+  function actualizarPista() {
+    if (velocidad > 0) {
+      const rendimiento = actualizarNeumaticos();
+      const avanceFrames = (velocidad / 200) * 10 * rendimiento;
+      desplazamiento -= avanceFrames;
+
+      frameActual += avanceFrames;
+      if (frameActual >= framesPorSegmentoBase) {
+        frameActual = 0;
+        indiceMapa++;
+        if (indiceMapa >= mapaPista.length) {
+          const tiempoVuelta = (Date.now() - tiempoVueltaInicio) / 1000;
+          tiemposVueltas.push(tiempoVuelta);
+          
+          if (tiempoVuelta < mejorTiempo) {
+            mejorTiempo = tiempoVuelta;
+            actualizarMejorTiempo();
+          }
+          
+          vueltaActual++;
+          if (vueltaActual > vueltasTotales) {
+            finJuego = true;
+            document.getElementById('gameOver').style.display = 'block';
+            document.getElementById('mensajeFinal').style.display = 'block';
+            const tiempoTotal = (Date.now() - tiempoInicio) / 1000;
+            
+            if (tiempoTotal < mejorTiempo) {
+              mejorTiempo = tiempoTotal;
+              actualizarMejorTiempo();
+            }
+            
+            // Mostrar estadísticas
+            mostrarEstadisticas(tiempoTotal);
+            return;
+          } else {
+            document.getElementById('vueltaActual').textContent = vueltaActual;
+            tiempoVueltaInicio = Date.now();
+            indiceMapa = 0;
+          }
+        }
+        const instruccion = mapaPista[indiceMapa];
+        if (instruccion === 'izquierda') {
+          anguloObjetivo -= 30;
+          document.getElementById('indicadorCurva').textContent = "¡CURVA IZQUIERDA!";
+          document.getElementById('indicadorCurva').style.display = 'block';
+          setTimeout(() => {
+            document.getElementById('indicadorCurva').style.display = 'none';
+          }, 2000);
+        } else if (instruccion === 'derecha') {
+          anguloObjetivo += 30;
+          document.getElementById('indicadorCurva').textContent = "¡CURVA DERECHA!";
+          document.getElementById('indicadorCurva').style.display = 'block';
+          setTimeout(() => {
+            document.getElementById('indicadorCurva').style.display = 'none';
+          }, 2000);
+        }
+      }
+    }
+
+    if (desplazamiento > framesPorSegmentoBase) desplazamiento -= framesPorSegmentoBase;
+    if (desplazamiento < 0) desplazamiento += framesPorSegmentoBase;
+
+    anguloActual += (anguloObjetivo - anguloActual) * 0.1;
+    
+    // Fuerza centrífuga en dirección opuesta
+    fuerzaCentrifuga = Math.sin(anguloActual * Math.PI / 180) * (velocidad / 100) * 0.3;
+  }
+
+  function update() {
+    if (finJuego) return;
+
+    // Actualizar tiempo
+    const tiempoTranscurrido = (Date.now() - tiempoVueltaInicio) / 1000;
+    actualizarTiempo(tiempoTranscurrido);
+    
+    // Actualizar lluvia
+    dibujarLluvia();
+
+    // Controles de aceleración
+    const rendimiento = 1 - (desgasteNeumaticos / 200);
+    let aceleracion = 0;
+    
+    if (keys['ArrowUp']) {
+      aceleracion = 1.5 * rendimiento;
+      if (drsActivado && velocidad > 200) {
+        aceleracion *= 1.3; // Boost con DRS
+      }
+      velocidad = Math.min(velocidad + aceleracion, velocidadMaxima * rendimiento);
+    } else if (keys['ArrowDown']) {
+      velocidad = Math.max(velocidad - 2, 0);
+    } else {
+      velocidad = Math.max(velocidad - 0.5, 0);
+    }
+    
+    // Registrar velocidad máxima
+    if (velocidad > velocidadMaximaAlcanzada) {
+      velocidadMaximaAlcanzada = velocidad;
+    }
+
+    // Controles de dirección con inercia
+    if (keys['ArrowLeft']) {
+      velocidadX -= 0.5 * (velocidad / 100);
+      anguloAuto = Math.max(anguloAuto - 1, -5);
+    }
+    if (keys['ArrowRight']) {
+      velocidadX += 0.5 * (velocidad / 100);
+      anguloAuto = Math.min(anguloAuto + 1, 5);
+    }
+    
+    // Aplicar fuerza centrífuga en dirección opuesta
+    if (Math.abs(anguloActual) > 5) {
+      velocidadX -= fuerzaCentrifuga;
+    }
+    
+    // Aplicar fricción (depende del clima)
+    const friccionClima = clima.includes('lluvia') ? 0.8 : friccionLateral;
+    velocidadX *= friccionClima;
+    posicionX += velocidadX;
+    
+    // Suavizar el ángulo del auto para que vuelva a posición neutral
+    if (!keys['ArrowLeft'] && !keys['ArrowRight']) {
+      anguloAuto *= 0.95;
+    }
+
+    // Detectar derrape
+    if (Math.abs(velocidadX) > 1.5 && velocidad > 50) {
+      document.getElementById('efectoDerrape').style.display = 'block';
+      const opacidad = Math.min(0.2, Math.abs(velocidadX)/8);
+      document.getElementById('efectoDerrape').style.background = 
+        `linear-gradient(to top, rgba(255, 255, 255, ${opacidad}), rgba(255, 200, 0, ${opacidad/2})`;
+    } else {
+      document.getElementById('efectoDerrape').style.display = 'none';
+    }
+
+    // Limitar posición del auto y aplicar daño por salida de pista
+    const maxPosicionX = canvas.width / 2 + roadWidthBase / 2 - 20;
+    const minPosicionX = canvas.width / 2 - roadWidthBase / 2 + 20;
+    const autoX = canvas.width / 2 + posicionX;
+
+    if (autoX < minPosicionX || autoX > maxPosicionX) {
+      // Reducir velocidad y aplicar daño
+      velocidad = Math.max(velocidad - 3, 0);
+      
+      // Aplicar daño según dificultad
+      let danoPorSalida = 0;
+      if (dificultad === 'facil') {
+        danoPorSalida = 0.3;
+      } else if (dificultad === 'normal') {
+        danoPorSalida = 0.5;
+      } else {
+        danoPorSalida = 0.8;
+      }
+      
+      // Aumentar daño si es en curva
+      if (Math.abs(anguloActual) > 10) {
+        danoPorSalida *= 1.5;
+      }
+      
+      daño += danoPorSalida;
+      actualizarDaño();
+      
+      // Si el daño es máximo, fin del juego
+      if (daño >= 100) {
+        finJuego = true;
+        document.getElementById('gameOver').style.display = 'block';
+        document.getElementById('mensajeFinal').textContent = "¡Auto destruido! Vuelve a intentarlo.";
+        document.getElementById('mensajeFinal').style.display = 'block';
+      }
+    }
+
+    actualizarPista();
+    document.getElementById('velocidad').textContent = Math.round(velocidad);
+  }
+
+  function drawGrass() {
+    // Cielo
+    const cieloColor = clima === 'soleado' ? '#1e3c72' : 
+                      clima === 'nublado' ? '#3a506b' : 
+                      clima === 'lluvia' ? '#2c3e50' : '#1a2530';
+    ctx.fillStyle = cieloColor;
+    ctx.fillRect(0, 0, canvas.width, horizon);
+    
+    // Pasto
+    const pastoColor = clima === 'soleado' ? '#2e7d32' : 
+                       clima === 'nublado' ? '#2d6a4f' : 
+                       clima === 'lluvia' ? '#1b4332' : '#0d2818';
+    ctx.fillStyle = pastoColor;
+    ctx.fillRect(0, horizon, canvas.width, canvas.height - horizon);
+    
+    // Detalle de pasto
+    ctx.strokeStyle = clima === 'soleado' ? '#3c8c40' : 
+                      clima === 'nublado' ? '#2d936c' : 
+                      clima === 'lluvia' ? '#1e6f50' : '#0f5132';
+    ctx.lineWidth = 2;
+    for(let i = 0; i < canvas.width; i += 20) {
+      ctx.beginPath();
+      ctx.moveTo(i, horizon);
+      ctx.lineTo(i, canvas.height);
+      ctx.stroke();
+    }
+  }
+
+  function drawRoad() {
+    const vanishingPoint = horizon;
+    const roadColor = clima.includes('lluvia') ? '#555' : '#444';
+
+    // Arrays para almacenar puntos de los bordes
+    const leftPoints = [];
+    const rightPoints = [];
+
+    // Dibujar la pista como un camino curvo
+    ctx.beginPath();
+
+    for (let y = canvas.height; y > vanishingPoint; y -= 2) {
+        const depth = (y - vanishingPoint) / (canvas.height - vanishingPoint);
+        const roadWidth = roadWidthBase * depth;
+
+        // Amplificar el desplazamiento horizontal para que las curvas sean más visibles
+        const curvaAmplificada = Math.sin(anguloActual * Math.PI / 180) * (1 - depth) * 800; // Ajusta el factor de amplificación
+        const centerX = canvas.width / 2 + curvaAmplificada;
+
+        const leftX = centerX - roadWidth / 2;
+        const rightX = centerX + roadWidth / 2;
+
+        // Almacenar puntos para los bordes
+        leftPoints.push({ x: leftX, y: y });
+        rightPoints.push({ x: rightX, y: y });
+
+        // Dibujar segmento de la pista
+        ctx.fillStyle = depth > 0.3 ? roadColor : '#666';
+        ctx.fillRect(leftX, y - 2, roadWidth, 2);
+
+        // Líneas centrales
+        if (Math.floor(y + desplazamiento) % 60 < 30 && depth > 0.2) {
+            const lineWidth = 10 * depth;
+            ctx.fillStyle = '#f5f1dc';
+            ctx.fillRect(centerX - lineWidth / 2, y - 1, lineWidth, 2);
+        }
+    }
+    
+    // Dibujar bordes curvos usando los puntos almacenados
+    drawCurvedBorder(leftPoints, '#fff');
+    drawCurvedBorder(rightPoints, '#fff');
+    
+    // Guardar los puntos para el siguiente frame
+    lastLeftPoints = leftPoints;
+    lastRightPoints = rightPoints;
+  }
+  
+  function drawCurvedBorder(points, color) {
+    if (points.length < 2) return;
+    
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    
+    // Mover al primer punto
+    ctx.moveTo(points[0].x, points[0].y);
+    
+    // Crear curvas suaves usando puntos de control
+    for (let i = 1; i < points.length - 1; i++) {
+      const xc = (points[i].x + points[i + 1].x) / 2;
+      const yc = (points[i].y + points[i + 1].y) / 2;
+      
+      // Usar curvas cuadráticas para transiciones suaves
+      ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+    }
+    
+    // Conectar al último punto
+    ctx.lineTo(points[points.length - 1].x, points[points.length - 1].y);
+    ctx.stroke();
+  }
+
+  function drawCar() {
+    const centerX = canvas.width / 2 + posicionX;
+    const centerY = canvas.height - auto.height/2 - 50;
+
+    // Guardar el estado actual del contexto
+    ctx.save();
+    
+    // Trasladar y rotar el contexto según la posición y ángulo del auto
+    ctx.translate(centerX, centerY);
+    ctx.rotate(anguloAuto * Math.PI / 180);
+    
+    // Asiento del conductor
+    ctx.fillStyle = '#111';
+    ctx.fillRect(-auto.width/2 - separacionRueda, auto.height/2 - 15, auto.width + 2 * separacionRueda, 15);
+    
+    // Cuerpo del auto
+    ctx.fillStyle = auto.color;
+    ctx.fillRect(-auto.width/2, -auto.height/2, auto.width, auto.height);
+    
+    // Ala delantera
+    ctx.fillStyle = '#222';
+    ctx.fillRect(-auto.width/2 - 10, -auto.height/2 + 15, auto.width + 20, 5);
+    
+    // Ala trasera
+    ctx.fillStyle = '#222';
+    ctx.fillRect(-auto.width/2 - 15, auto.height/2 - 15, auto.width + 30, 5);
+    
+    // Cabina
+    ctx.fillStyle = 'rgba(50, 50, 150, 0.6)';
+    ctx.fillRect(-auto.width/2 + 15, -auto.height/2 + 5, auto.width - 30, 15);
+    
+    // Neumáticos
+    const colorNeumatico = 
+      tempNeumaticos < 80 ? '#0066cc' : 
+      tempNeumaticos < 100 ? '#00cc66' : 
+      tempNeumaticos < 110 ? '#ffcc00' : '#ff3300';
+    
+    ctx.fillStyle = colorNeumatico;
+    ctx.fillRect(-auto.width/2 - rueda.ancho - separacionRueda, -auto.height/2, rueda.ancho, rueda.alto);
+    ctx.fillRect(auto.width/2 + separacionRueda, -auto.height/2, rueda.ancho, rueda.alto);
+    ctx.fillRect(-auto.width/2 - rueda.ancho - separacionRueda, auto.height/2 - rueda.alto, rueda.ancho, rueda.alto);
+    ctx.fillRect(auto.width/2 + separacionRueda, auto.height/2 - rueda.alto, rueda.ancho, rueda.alto);
+    
+    // Detalle de neumáticos
+    ctx.fillStyle = '#333';
+    ctx.fillRect(-auto.width/2 - rueda.ancho - separacionRueda + 5, -auto.height/2 + 5, rueda.ancho - 10, 5);
+    ctx.fillRect(auto.width/2 + separacionRueda + 5, -auto.height/2 + 5, rueda.ancho - 10, 5);
+    
+    // Logo F1
+    ctx.fillStyle = 'white';
+    ctx.font = 'bold 20px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('F1', 0, -auto.height/2 + 25);
+    
+    // DRS activado
+    if (drsActivado) {
+      ctx.fillStyle = '#00ff99';
+      ctx.fillRect(auto.width/2 - 15, -auto.height/2 + 25, 10, 5);
+    }
+    
+    // Restaurar el contexto
+    ctx.restore();
+  }
+
+  function dibujarVelocimetro() {
+    const centerX = velocidadimetroCanvas.width / 2;
+    const centerY = velocidadimetroCanvas.height / 2;
+    const radius = 80;
+    
+    // Limpiar canvas
+    velocimetroCtx.clearRect(0, 0, velocidadimetroCanvas.width, velocidadimetroCanvas.height);
+    
+    // Fondo del velocímetro
+    velocimetroCtx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    velocimetroCtx.beginPath();
+    velocimetroCtx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    velocimetroCtx.fill();
+    
+    // Marcas del velocímetro
+    velocimetroCtx.strokeStyle = '#fff';
+    velocimetroCtx.lineWidth = 2;
+    velocimetroCtx.beginPath();
+    velocimetroCtx.arc(centerX, centerY, radius - 5, 0, Math.PI * 2);
+    velocimetroCtx.stroke();
+    
+    // Escala
+    const maxSpeed = velocidadMaxima;
+    const startAngle = -Math.PI * 0.8;
+    const endAngle = Math.PI * 0.8;
+    
+    for (let i = 0; i <= maxSpeed; i += 20) {
+      const angle = startAngle + (endAngle - startAngle) * (i / maxSpeed);
+      const x1 = centerX + Math.cos(angle) * (radius - 15);
+      const y1 = centerY + Math.sin(angle) * (radius - 15);
+      const x2 = centerX + Math.cos(angle) * (radius - (i % 100 === 0 ? 25 : 20));
+      const y2 = centerY + Math.sin(angle) * (radius - (i % 100 === 0 ? 25 : 20));
+      
+      velocimetroCtx.beginPath();
+      velocimetroCtx.moveTo(x1, y1);
+      velocimetroCtx.lineTo(x2, y2);
+      velocimetroCtx.stroke();
+      
+      if (i % 100 === 0) {
+        velocimetroCtx.fillStyle = '#fff';
+        velocimetroCtx.font = '12px Arial';
+        velocimetroCtx.textAlign = 'center';
+        velocimetroCtx.textBaseline = 'middle';
+        velocimetroCtx.fillText(i, 
+          centerX + Math.cos(angle) * (radius - 35), 
+          centerY + Math.sin(angle) * (radius - 35)
+        );
+      }
+    }
+    
+    // Aguja
+    const speedAngle = startAngle + (endAngle - startAngle) * (velocidad / maxSpeed);
+    const needleX = centerX + Math.cos(speedAngle) * (radius - 10);
+    const needleY = centerY + Math.sin(speedAngle) * (radius - 10);
+    
+    velocimetroCtx.strokeStyle = '#ff3333';
+    velocimetroCtx.lineWidth = 3;
+    velocimetroCtx.beginPath();
+    velocimetroCtx.moveTo(centerX, centerY);
+    velocimetroCtx.lineTo(needleX, needleY);
+    velocimetroCtx.stroke();
+    
+    // Centro
+    velocimetroCtx.fillStyle = '#ff3333';
+    velocimetroCtx.beginPath();
+    velocimetroCtx.arc(centerX, centerY, 5, 0, Math.PI * 2);
+    velocimetroCtx.fill();
+    
+    // Texto de velocidad
+    velocimetroCtx.fillStyle = '#fff';
+    velocimetroCtx.font = 'bold 20px Arial';
+    velocimetroCtx.fillText(`${Math.round(velocidad)} km/h`, centerX, centerY + 40);
+    
+    // Indicador de DRS
+    if (drsActivado) {
+      velocimetroCtx.fillStyle = '#00ff99';
+      velocimetroCtx.font = 'bold 14px Arial';
+      velocimetroCtx.fillText('DRS ACTIVO', centerX, centerY - 50);
+    }
+    
+    // Indicador de zona de desgaste (95%+)
+    if (velocidad / velocidadMaxima >= 0.95) {
+      velocimetroCtx.fillStyle = 'rgba(255, 100, 100, 0.3)';
+      velocimetroCtx.beginPath();
+      velocimetroCtx.moveTo(centerX, centerY);
+      velocimetroCtx.arc(centerX, centerY, radius - 5, startAngle + (endAngle - startAngle) * 0.95, endAngle);
+      velocimetroCtx.closePath();
+      velocimetroCtx.fill();
+    }
+  }
+
+  function actualizarDaño() {
+    document.getElementById('dañoPorcentaje').textContent = `${Math.round(daño)}%`;
+    document.getElementById('dañoProgreso').style.width = `${daño}%`;
+    
+    // Cambiar color según daño
+    if (daño > 70) {
+      document.getElementById('dañoProgreso').style.background = 'linear-gradient(to right, #ff3300, #ff0000)';
+    } else if (daño > 40) {
+      document.getElementById('dañoProgreso').style.background = 'linear-gradient(to right, #ff9900, #ff3300)';
+    }
+  }
+
+  function formatearTiempo(tiempo) {
+    const minutos = Math.floor(tiempo / 60);
+    const segundos = Math.floor(tiempo % 60);
+    const milisegundos = Math.floor((tiempo * 1000) % 1000);
+    return `${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}.${milisegundos.toString().padStart(3, '0')}`;
+  }
+
+  function actualizarTiempo(tiempo) {
+    document.getElementById('tiempoActual').textContent = formatearTiempo(tiempo);
+  }
+
+  function actualizarMejorTiempo() {
+    if (mejorTiempo === Infinity) return;
+    document.getElementById('mejorVuelta').textContent = `Mejor: ${formatearTiempo(mejorTiempo)}`;
+  }
+
+  function mostrarEstadisticas(tiempoTotal) {
+    document.getElementById('est-tiempoTotal').textContent = formatearTiempo(tiempoTotal);
+    document.getElementById('est-mejorVuelta').textContent = formatearTiempo(mejorTiempo);
+    document.getElementById('est-velocidadMax').textContent = `${Math.round(velocidadMaximaAlcanzada)} km/h`;
+    document.getElementById('est-danoTotal').textContent = `${Math.round(daño)}%`;
+    
+    const tiemposElement = document.getElementById('est-tiemposVueltas');
+    tiemposElement.innerHTML = '';
+    
+    let mejorVueltaIndex = 0;
+    let mejorTiempoVuelta = Infinity;
+    
+    tiemposVueltas.forEach((tiempo, index) => {
+      if (tiempo < mejorTiempoVuelta) {
+        mejorTiempoVuelta = tiempo;
+        mejorVueltaIndex = index;
+      }
+      
+      const lapElement = document.createElement('div');
+      lapElement.className = 'lap-time';
+      lapElement.innerHTML = `Vuelta ${index+1}: <span>${formatearTiempo(tiempo)}</span>`;
+      tiemposElement.appendChild(lapElement);
+    });
+    
+    // Marcar la mejor vuelta
+    tiemposElement.children[mejorVueltaIndex].classList.add('best');
+    
+    document.getElementById('estadisticas').style.display = 'block';
+  }
+
+  function loop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawGrass();
+    update();
+    drawRoad();
+    drawCar();
+    dibujarVelocimetro();
+    requestAnimationFrame(loop);
+  }
+
+  window.addEventListener('resize', () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  });
+
+  // Nombres de pistas
+  const nombresPistas = [
+    'Circuito Mónaco', 'Silverstone Clásico', 'Spa-Francorchamps', 'Suzuka',
+    'Interlagos', 'Montmeló', 'Monza', 'Red Bull Ring',
+    'Gilles Villeneuve', 'Marina Bay'
+  ];
+
+  // Iniciar el menú
+  document.getElementById('controles').style.display = 'none';
+  document.getElementById('btnReiniciarJuego').style.display = 'none';
+  document.getElementById('btnConfig').style.display = 'none';
+  document.getElementById('menuInicio').style.display = 'block';
+  loop();
+});
+</script>
+</body>
+</html>

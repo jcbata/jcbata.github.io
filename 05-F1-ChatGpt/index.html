@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>F1 Carrera en Primera Persona</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body, html { margin: 0; padding: 0; overflow: hidden; font-family: sans-serif; background: #87ceeb; }
+    canvas { display: block; background: #87ceeb; }
+    #ui {
+      position: absolute; top: 10px; left: 10px; color: white; z-index: 10;
+      text-shadow: 0 0 3px black;
+    }
+    #ui div { margin-bottom: 5px; }
+    #controles {
+      position: absolute; top: 100px; left: 10px; z-index: 10; color: black; background: #fff8;
+      padding: 10px; border-radius: 6px; font-family: sans-serif; user-select: none;
+    }
+    #controles input[type=number] {
+      width: 60px;
+    }
+    #btnGenerar {
+      margin-left: 10px;
+      padding: 4px 8px;
+      cursor: pointer;
+      border: 1px solid #888;
+      background: #eee;
+      border-radius: 4px;
+      transition: background 0.3s;
+    }
+    #btnGenerar:hover {
+      background: #ddd;
+    }
+    #btnReiniciarJuego {
+      position: absolute;
+      top: 80px;
+      left: 10px;
+      padding: 6px 12px;
+      font-size: 14px;
+      z-index: 11;
+      background: white;
+      color: black;
+      border: 2px solid black;
+      border-radius: 8px;
+      cursor: pointer;
+      display: none;
+    }
+    #gameOver {
+      position: absolute;
+      top: 50%; left: 50%; transform: translate(-50%, -50%);
+      font-size: 48px; color: red; text-shadow: 2px 2px black;
+      display: none;
+      z-index: 20;
+    }
+    #tituloJuego {
+      position: absolute;
+      top: 20px; left: 50%; transform: translateX(-50%);
+      font-size: 32px;
+      color: yellow;
+      font-weight: bold;
+      text-shadow: 2px 2px 4px black;
+      z-index: 15;
+    }
+    #mensajePista {
+      position: absolute;
+      top: 50px; left: 10px; color: white;
+      font-weight: bold;
+      font-size: 18px;
+      text-shadow: 1px 1px 2px black;
+      z-index: 10;
+    }
+    #mensajeFinal {
+      position: absolute;
+      top: 60%; left: 50%; transform: translate(-50%, -50%);
+      font-size: 24px;
+      color: white;
+      text-align: center;
+      text-shadow: 1px 1px 2px black;
+      z-index: 21;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+<div id="tituloJuego">F1 Carrera en Primera Persona</div>
+<div id="ui">
+  <div id="mensajePista"></div>
+  <div>Velocidad: <span id="velocidad">0</span> km/h</div>
+</div>
+<div id="controles">
+  <label for="distancia">Distancia pista (km):</label>
+  <input type="number" id="distancia" min="1" max="500" value="5" />
+  <button id="btnGenerar">Generar pista</button>
+</div>
+<button id="btnReiniciarJuego">Reiniciar juego</button>
+<div id="gameOver">¡Fin del juego!</div>
+<div id="mensajeFinal">¡Felicidades! Has terminado la carrera en tiempo récord.</div>
+<canvas id="canvas"></canvas>
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let velocidad = 0;
+let anguloObjetivo = 0;
+let anguloActual = 0;
+let posicionX = 0;
+let desplazamiento = 0;
+
+const auto = { color: 'red', width: 80, height: 40 };
+const rueda = { ancho: 40, alto: 38 };
+const separacionRueda = 10;
+const roadWidthBase = canvas.width * 0.6;
+const horizon = canvas.height / 2;
+
+let mapaPista = [];
+let indiceMapa = 0;
+let frameActual = 0;
+const framesPorSegmentoBase = 80;
+let keys = {};
+let finJuego = false;
+
+const nombresPistas = [
+  'Tormenta Roja', 'Circuito Esmeralda', 'Senda de Fuego', 'Viento Salvaje',
+  'Ruta del Trueno', 'Pista Eclipse', 'Desafío Lunar', 'Carretera del Dragón',
+  'Sendero Ártico', 'Camino Infernal'
+];
+
+window.addEventListener('keydown', e => keys[e.key] = true);
+window.addEventListener('keyup', e => keys[e.key] = false);
+
+document.getElementById('btnGenerar').addEventListener('click', () => {
+  const distanciaKm = parseInt(document.getElementById('distancia').value);
+  if (isNaN(distanciaKm) || distanciaKm < 1 || distanciaKm > 500) return;
+  iniciarJuego(distanciaKm);
+  document.getElementById('controles').style.display = 'none';
+  document.getElementById('btnReiniciarJuego').style.display = 'block';
+});
+
+document.getElementById('btnReiniciarJuego').addEventListener('click', () => {
+  iniciarJuego(parseInt(document.getElementById('distancia').value) || 5);
+});
+
+function iniciarJuego(distanciaKm) {
+  mapaPista = generarMapa(distanciaKm);
+  indiceMapa = 0;
+  frameActual = 0;
+  anguloObjetivo = 0;
+  anguloActual = 0;
+  desplazamiento = 0;
+  posicionX = 0;
+  velocidad = 0;
+  finJuego = false;
+  document.getElementById('gameOver').style.display = 'none';
+  document.getElementById('mensajeFinal').style.display = 'none';
+  const nombreAleatorio = nombresPistas[Math.floor(Math.random() * nombresPistas.length)];
+  document.getElementById('mensajePista').textContent = `Pista "${nombreAleatorio}" generada con éxito!`;
+}
+
+function generarMapa(distanciaKm) {
+  const elementos = distanciaKm * 10;
+  const opciones = ['frente', 'izquierda', 'derecha'];
+  const nuevoMapa = [];
+  for (let i = 0; i < elementos; i++) {
+    const ultimo = nuevoMapa[i-1];
+    let eleccion;
+    if (ultimo === 'izquierda' || ultimo === 'derecha') {
+      eleccion = Math.random() < 0.7 ? 'frente' : opciones[Math.floor(Math.random() * 2) + 1];
+    } else {
+      eleccion = opciones[Math.floor(Math.random() * 3)];
+    }
+    nuevoMapa.push(eleccion);
+  }
+  return nuevoMapa;
+}
+
+function actualizarPista() {
+  if (velocidad > 0) {
+    const avanceFrames = (velocidad / 200) * 5;
+    desplazamiento -= avanceFrames;
+
+    frameActual += avanceFrames;
+    if (frameActual >= framesPorSegmentoBase) {
+      frameActual = 0;
+      indiceMapa++;
+      if (indiceMapa >= mapaPista.length) {
+        finJuego = true;
+        document.getElementById('gameOver').style.display = 'block';
+        document.getElementById('mensajeFinal').style.display = 'block';
+        const eventoTerminar = new CustomEvent('terminarCarrera');
+        window.dispatchEvent(eventoTerminar);
+        return;
+      }
+      const instruccion = mapaPista[indiceMapa];
+      if (instruccion === 'izquierda') anguloObjetivo -= 30;
+      else if (instruccion === 'derecha') anguloObjetivo += 30;
+    }
+  }
+
+  if (desplazamiento > framesPorSegmentoBase) desplazamiento -= framesPorSegmentoBase;
+  if (desplazamiento < 0) desplazamiento += framesPorSegmentoBase;
+
+  anguloActual += (anguloObjetivo - anguloActual) * 0.1;
+}
+
+function update() {
+  if (finJuego) return;
+
+  if (keys['ArrowUp']) velocidad = Math.min(velocidad + 1, 200);
+  else if (keys['ArrowDown']) velocidad = Math.max(velocidad - 2, 0);
+  else velocidad = Math.max(velocidad - 0.5, 0);
+
+  if (keys['ArrowLeft']) posicionX -= 5;
+  if (keys['ArrowRight']) posicionX += 5;
+
+  const maxPosicionX = canvas.width / 2 + roadWidthBase / 2;
+  const minPosicionX = canvas.width / 2 - roadWidthBase / 2;
+  const autoX = canvas.width / 2 + posicionX;
+
+  if (autoX < minPosicionX || autoX > maxPosicionX) {
+    velocidad = Math.max(velocidad - 2, 0);
+  }
+
+  actualizarPista();
+  document.getElementById('velocidad').textContent = Math.round(velocidad);
+}
+
+function drawGrass() {
+  ctx.fillStyle = '#2e7d32';
+  ctx.fillRect(0, horizon, canvas.width, canvas.height - horizon);
+}
+
+function drawRoad() {
+  for (let y = canvas.height; y > horizon; y -= 5) {
+    const perspective = y / canvas.height;
+    const halfRoad = (roadWidthBase / 2) * perspective;
+    const center = canvas.width / 2 + Math.sin(anguloActual * Math.PI / 180) * (1 - perspective) * 400;
+    const left = center - halfRoad;
+    const right = center + halfRoad;
+
+    ctx.fillStyle = 'gray';
+    ctx.fillRect(left, y - 5, right - left, 5);
+
+    if ((y + desplazamiento) % 60 < 30) {
+      const lineaAncho = 10;
+      const lineaAlto = 5;
+      const lineaX = center - lineaAncho / 2;
+      ctx.fillStyle = '#f5f1dc';
+      ctx.fillRect(lineaX, y - lineaAlto, lineaAncho, lineaAlto);
+    }
+  }
+}
+
+function drawCar() {
+  const baseX = canvas.width / 2 + posicionX - auto.width / 2;
+  const baseY = canvas.height - auto.height;
+
+  const asientoX = baseX - separacionRueda;
+  const asientoWidth = auto.width + 2 * separacionRueda;
+  const asientoHeight = 20;
+  const asientoY = baseY + auto.height;
+
+  ctx.fillStyle = '#880000';
+  ctx.fillRect(asientoX, asientoY, asientoWidth, asientoHeight);
+
+  ctx.fillStyle = auto.color;
+  ctx.fillRect(baseX, baseY, auto.width, auto.height);
+
+  ctx.fillStyle = 'black';
+  ctx.fillRect(baseX - rueda.ancho - separacionRueda, baseY, rueda.ancho, rueda.alto);
+  ctx.fillRect(baseX + auto.width + separacionRueda, baseY, rueda.ancho, rueda.alto);
+}
+
+function loop() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawGrass();
+  update();
+  drawRoad();
+  drawCar();
+  requestAnimationFrame(loop);
+}
+
+window.addEventListener('resize', () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+});
+
+iniciarJuego(5);
+loop();
+</script>
+</body>
+</html>

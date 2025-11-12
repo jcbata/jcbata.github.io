@@ -112,6 +112,35 @@ class Juego {
 		return JSON.parse(JSON.stringify(this.tablero));
 	}
 
+	clonar() {
+		// Crea un nuevo objeto Juego para el clon.
+		const clon = new Juego();
+
+		// Copia profunda de la matriz del tablero.
+		clon.tablero = this.getTableroJson();
+
+		// Copia directa de todas las propiedades críticas del estado.
+		clon.turno = this.turno;
+		clon.fenEnrroque = this.fenEnrroque;
+		clon.fenPeonPaso = this.fenPeonPaso;
+		clon.nroMedioMovPeon = this.nroMedioMovPeon;
+		clon.nroMovi_n = this.nroMovi_n;
+		clon.tripleRep = this.tripleRep;
+
+		// Copia el estado de jaque actual.
+		clon.jaque = JSON.parse(JSON.stringify(this.jaque));
+
+		// Copia las funciones de evaluación.
+		clon.fdeBlancas = this.fdeBlancas;
+		clon.fdeNegras = this.fdeNegras;
+		
+		// Inicializa el clon con sus piezas y movimientos calculados.
+		clon.tam = this.tam; // El tamaño del tablero es necesario para la creación de piezas.
+		clon.cargaPiezas(img); // `img` es una variable global, lo cual funciona por ahora.
+
+		return clon;
+	}
+
 	updateFEN(fen){
 		//nomenglatura FEN para iniciar posiciones
 		let a={'p':-1,'n':-2,'b':-3,'r':-4,'q':-5,'k':-6,'P':1,'N':2,'B':3,'R':4,'Q':5,'K':6}
@@ -123,7 +152,8 @@ class Juego {
 		// limpia el tablero
 		if(this.tablero.length==0)
 		{
-			this.tablero=Array(8).fill(Array(8).fill(0));
+			//this.tablero=Array(8).fill(Array(8).fill(0));
+			this.tablero = Array.from({length:8}, () => Array(8).fill(0));
 		}else{
 			for(var i=0; i<this.tablero.length;i++){
 				for(var j=0;j<this.tablero[i].length;j++){
@@ -226,100 +256,95 @@ class Juego {
 		return this.fen;
 	}
 
-	cargaPiezas(img){
-		let i,j;
-		this.piezas=[];
+	crearObjetosPieza(img) {
+		let i, j;
+		this.piezas = [];
 		// carga todas las piezas
-		for(i=0;i<this.tablero.length;i++){
-	
-			for(j=0;j<this.tablero[i].length;j++){
-	
+		for (i = 0; i < this.tablero.length; i++) {
+			for (j = 0; j < this.tablero[i].length; j++) {
 				let bando = 0
-				if(this.tablero[i][j]!=0) bando =abs(this.tablero[i][j]) / this.tablero[i][j];
+				if (this.tablero[i][j] != 0) bando = Math.abs(this.tablero[i][j]) / this.tablero[i][j];
 
-				if(this.tablero[i][j]!=0){
-					this.piezas.push(new Pieza(abs(this.tablero[i][j]),[i,j],this.tam,bando,1,img,{'1':10,'2':10,'3':10,'4':10,'5':10,'6':10}));
+				if (this.tablero[i][j] != 0) {
+					this.piezas.push(new Pieza(Math.abs(this.tablero[i][j]), [i, j], this.tam, bando, 1, img, { '1': 10, '2': 10, '3': 10, '4': 10, '5': 10, '6': 10 }));
 				}
 
-				if(this.tablero[i][j] == -6) this.posK_n = [i,j];
-				if(this.tablero[i][j] == 6) this.posK_b = [i,j];
-
-
+				if (this.tablero[i][j] == -6) this.posK_n = [i, j];
+				if (this.tablero[i][j] == 6) this.posK_b = [i, j];
 			}
-			
+		}
+	}
 
-			
+	actualizarEstadoJuego() {
+		let i,j;
+		// Primero, reseteamos el estado que vamos a recalcular.
+		this.movimientos_n = 0;
+		this.movimientos_b = 0;
+		this.valorb = 0;
+		this.valorn = 0;
+		for (let k = 0; k < this.piezas.length; k++) {
+			this.piezas[k].movPosibles = [];
+			this.piezas[k].amenazasA = [];
+			this.piezas[k].amenazasDe = [];
+			this.piezas[k].defendidoPor = [];
 		}
 
-		// carga movimientos posibles para cada pieza	
-		this.movimientos_n =0;
-		this.movimientos_b =0;
+		// Carga movimientos posibles, amenazas y defensas para cada pieza
+		for (let k = 0; k < this.piezas.length; k++) {
+			for (i = 0; i < this.tablero.length; i++) {
+				for (j = 0; j < this.tablero[i].length; j++) {
+					if (!(this.piezas[k].pos[0] == i && this.piezas[k].pos[1] == j))
+						if (this.posicionEsLegal(this.tablero, this.piezas[k].pos, [i, j])) {
+							if (this.piezas[k].bando > 0) {
+								this.movimientos_b++;
+							} else {
+								this.movimientos_n++;
+							}
 
-		for(let k= 0;k<this.piezas.length;k++){
+							if (this.tablero[i][j] != 0) {
+								// aquí se debe validar si el destino es su propia ficha (defensa)
+								let piezaDest;
+								for (let l = 0; l < this.piezas.length; l++) {
+									if (this.piezas[l].pos[0] == i && this.piezas[l].pos[1] == j) {
+										piezaDest = this.piezas[l];
+										break;
+									}
+								}
 
-			for(i=0;i<this.tablero.length;i++){
-	
-				for(j=0;j<this.tablero[i].length;j++){
-
-					if(!(this.piezas[k].pos[0]==i && this.piezas[k].pos[1]==j))
-					if(this.posicionEsLegal(this.tablero, this.piezas[k].pos, [i,j])){
-						
-		
-						if(this.piezas[k].bando > 0){
-							this.movimientos_b++;
-						}else{
-							this.movimientos_n++;
-						}
-
-						if(this.tablero[i][j]!=0) {
-						// aquí se debe validar si el destino es su propia ficha (defensa)
-							let piezaDest;
-							for(let l=0;l<this.piezas.length;l++){
-								if(this.piezas[l].pos[0]==i && this.piezas[l].pos[1]==j){
-									piezaDest = this.piezas[l];
-									break;
+								if (this.piezas[k].bando == piezaDest.bando) {
+									piezaDest.defendidoPor.push(this.piezas[k].pos);
+								} else {
+									this.piezas[k].movPosibles.push([i, j]);
+									this.piezas[k].amenazasA.push(piezaDest);
+									piezaDest.amenazasDe.push(this.piezas[k]);
 								}
 							}
-						
-							if(this.piezas[k].bando==piezaDest.bando){
-								piezaDest.defendidoPor.push(this.piezas[k].pos);
-							}else{
-								this.piezas[k].movPosibles.push([i,j]);
-								this.piezas[k].amenazasA.push(piezaDest);
-								piezaDest.amenazasDe.push(this.piezas[k]);
+							else {
+								this.piezas[k].movPosibles.push([i, j]);
 							}
 						}
-						else{
-							this.piezas[k].movPosibles.push([i,j]);
-						}
-						
-					}
-					
-
 				}
-			}		
-
+			}
 		}
-		this.valorb=0;
-		this.valorn=0;
-		for(let k=0;k<this.piezas.length;k++ ){
-			//valor pieza
-			//fnValorPieza(this.piezas[k]);
 
-			// se agrega una función de evaluación diferente para blancas o negras.
-			if(this.piezas[k].bando>0){
+		// Calcula el valor de cada pieza y el valor total de cada bando
+		for (let k = 0; k < this.piezas.length; k++) {
+			if (this.piezas[k].bando > 0) {
 				this.fdeBlancas(this.piezas[k]);
-
 				this.valorb += this.piezas[k].valor;
-			} else{
+			} else {
 				this.fdeNegras(this.piezas[k]);
-
 				this.valorn += this.piezas[k].valor;
 			}
-
 		}
 
+		// Finalmente, valida si hay jaque
 		this.jaque = this.validaJaque(this.tablero);
+	}
+
+	cargaPiezas(img) {
+		this.crearObjetosPieza(img);
+		this.actualizarEstadoJuego();
 	}
 	
 
@@ -327,13 +352,13 @@ class Juego {
 		let pos = [-1,-1];
 		pos = [(y/this.tam|0),(x/this.tam|0)];
 		// tamañox (8) -> this.tablero[0].length*this.tam;   x -> mX 
-		if(mouseX > tablero.tablero[0].length*tablero.tam )					
+		if(x > this.tablero[0].length*this.tablero.tam )					
 			pos = [-1,-1];
-		if(mouseX < 0)					
+		if(x < 0)					
 			pos = [-1,-1];
-		if(mouseY > tablero.tablero.length*tablero.tam )
+		if(y > this.tablero.length*this.tablero.tam )
 			pos = [-1,-1];
-		if(mouseY < 0)					
+		if(y < 0)					
 			pos = [-1,-1];
 
 		return pos;
@@ -358,38 +383,44 @@ class Juego {
 		let mejorPieza2,mejorDestino2;
 		//------------------------------------------------------
 		for(let i=0; i<piezasTurno.length; i++){
-			for(let j=0; j<piezasTurno[i].movPosibles.length; j++){
+			const piezaOriginal = piezasTurno[i];
 
-				let _otroJuego = new Juego(_juego.getTableroJson());
-				//Para inicializar la función diferenciada
-				_otroJuego.fdeBlancas = _juego.fdeBlancas;
-				_otroJuego.fdeNegras = _juego.fdeNegras;
+			for(let j=0; j<piezaOriginal.movPosibles.length; j++){
+				const destino = piezaOriginal.movPosibles[j];
 
-				_otroJuego.updateFEN(_juego.readFEN());
-				_otroJuego.cargaPiezas(img);
+				// Crea una simulación profunda para probar el movimiento.
+				let _otroJuego = _juego.clonar();
 
-				if(_otroJuego.mover(piezasTurno[i],piezasTurno[i].movPosibles[j])>0){
-					_otroJuego.cargaPiezas(img);
+				// Busca la pieza correspondiente DENTRO de la simulación.
+				const piezaEnSimulacion = _otroJuego.piezas.find(p => 
+					p.pos[0] === piezaOriginal.pos[0] && p.pos[1] === piezaOriginal.pos[1]
+				);
+
+				if (!piezaEnSimulacion) continue; // Salvaguarda por si no se encuentra la pieza.
+
+				// Ejecuta el movimiento con la pieza que pertenece a la simulación.
+				if(_otroJuego.mover(piezaEnSimulacion, destino)>0){
+					_otroJuego.actualizarEstadoJuego();
 					
-					if(piezasTurno[i].bando<0)
+					if(piezaOriginal.bando<0)
 						if(_otroJuego.valorn-_otroJuego.valorb>mejorValor){
 							mejorValor2=mejorValor;
 							mejorPieza2=mejorPieza;
 							mejorDestino2=mejorDestino;
 
 							mejorValor=_otroJuego.valorn-_otroJuego.valorb;
-							mejorPieza = piezasTurno[i];
-							mejorDestino = piezasTurno[i].movPosibles[j];
+							mejorPieza = piezaOriginal; // Guardamos la pieza ORIGINAL, no la de la simulación.
+							mejorDestino = destino;
 						}
-					if(piezasTurno[i].bando>0)
+					if(piezaOriginal.bando>0)
 						if(_otroJuego.valorb-_otroJuego.valorn>mejorValor){
 							mejorValor2=mejorValor;
 							mejorPieza2=mejorPieza;
 							mejorDestino2=mejorDestino;
 
 							mejorValor=_otroJuego.valorb-_otroJuego.valorn;
-							mejorPieza = piezasTurno[i];
-							mejorDestino = piezasTurno[i].movPosibles[j];
+							mejorPieza = piezaOriginal; // Guardamos la pieza ORIGINAL, no la de la simulación.
+							mejorDestino = destino;
 						}
 				}
 
@@ -530,7 +561,7 @@ class Juego {
 				// no necesario, ya se valida en el persiste el Jaque!
 
 				if( this.piezas[i].tipo == 1 && this.piezas[i].pos[0] ==  posDestino[0]-1*this.piezas[i].bando
-					&& abs(posDestino[1]-this.piezas[i].pos[1])==1){
+					&& Math.abs(posDestino[1]-this.piezas[i].pos[1])==1){
 						console.log("Casilla amenazada por Peón: "+posDestino);
 					return;
 				}
@@ -569,8 +600,14 @@ class Juego {
 		// antes de mover contamos los movimientos
 		this.nroMedioMovPeon++;
 
-		if(this.tablero[posDestino[0]][posDestino[1]]!=0) // si hay captura reinicia conteo de movimiento de Peón
-			this.nroMedioMovPeon=0;
+		// Si hay captura, removemos la pieza capturada del array de piezas.
+		if (this.tablero[posDestino[0]][posDestino[1]] != 0) {
+			const capturedPieceIndex = this.piezas.findIndex(p => p.pos[0] === posDestino[0] && p.pos[1] === posDestino[1]);
+			if (capturedPieceIndex > -1) {
+				this.piezas.splice(capturedPieceIndex, 1);
+			}
+			this.nroMedioMovPeon = 0; // si hay captura reinicia conteo
+		}
 
 		if(pieza.tipo==1){ // si se mueve un peón reinicia conteo de movimiento de Peón
 			this.nroMedioMovPeon=0;
@@ -586,7 +623,7 @@ class Juego {
 
 		// habilita peón al paso 
 		this.fenPeonPaso = "-";
-		if(pieza.tipo==1 && abs(posDestino[0]-pieza.pos[0])==2){  // si es peón y el destino es + 2
+		if(pieza.tipo==1 && Math.abs(posDestino[0]-pieza.pos[0])==2){  // si es peón y el destino es + 2
 			let _posdes=6;
 			if(pieza.bando>0)
 				_posdes=3;
@@ -609,16 +646,21 @@ class Juego {
 
 
 
-		if( pieza.tipo== 6 &&	abs(posDestino[0]==pieza.pos[0]) && abs(posDestino[1]-pieza.pos[1])==2 ){
+		if( pieza.tipo== 6 &&	posDestino[0]==pieza.pos[0] && Math.abs(posDestino[1]-pieza.pos[1])==2 ){
 			//  si es enrroque movemos la torre
-
 			let sentido = posDestino[1]-pieza.pos[1];
-			let posTorre = [pieza.pos[0],this.tablero[0].length-1]; // ubicamos posición de la torre.
-			if(sentido<0) posTorre = [pieza.pos[0],0];
+			let posTorreOrigen = [pieza.pos[0], sentido > 0 ? this.tablero[0].length - 1 : 0];
+			let posTorreDestino = [pieza.pos[0], pieza.pos[1] + sentido / Math.abs(sentido)];
 
-			this.tablero[pieza.pos[0]][pieza.pos[1]+sentido/abs(sentido)] = this.tablero[posTorre[0]][posTorre[1]];
-			this.tablero[posTorre[0]][posTorre[1]] = 0;
+			// Actualiza la matriz del tablero
+			this.tablero[posTorreDestino[0]][posTorreDestino[1]] = this.tablero[posTorreOrigen[0]][posTorreOrigen[1]];
+			this.tablero[posTorreOrigen[0]][posTorreOrigen[1]] = 0;
 
+			// Encuentra y actualiza el objeto de la torre
+			const torre = this.piezas.find(p => p.pos[0] === posTorreOrigen[0] && p.pos[1] === posTorreOrigen[1]);
+			if (torre) {
+				torre.pos = posTorreDestino;
+			}
 		}
 
 		//----------------------------------------
@@ -698,7 +740,8 @@ class Juego {
 
 		// ningún movimiento posible?
 
-		//pieza.pos = posDestino;
+		pieza.pos = posDestino; // Actualiza la posición en el objeto pieza
+		pieza.coord = [pieza.pos[0] * this.tam, pieza.pos[1] * this.tam]; // Actualiza la coordenada de dibujo
 		this.turno=this.turno*-1
 		return 1;
 
@@ -724,7 +767,7 @@ class Juego {
 			for(let j = 0; j < _matriz[i].length; j++) {
 				// si hay alguna pieza en la casilla
 				if(_matriz[i][j]!=0) 
-				if(abs(_matriz[i][j])/_matriz[i][j] >0){
+				if(Math.abs(_matriz[i][j])/_matriz[i][j] >0){
 					// si la pieza es blanca verifica si tiene un movimiento válido al rey negro
 					if(this.posicionEsValida(_matriz, [i,j], _posKn)) 
 						_jaque.jaqueKn=1; // jaque al rey negro
@@ -754,11 +797,11 @@ class Juego {
 		// sentido
 		let sentidoX = 0;
 		if(diferenciaX != 0)
-		sentidoX = diferenciaX/abs(diferenciaX);
+		sentidoX = diferenciaX/Math.abs(diferenciaX);
 
 		let sentidoY = 0;
 		if(diferenciaY != 0)
-		sentidoY = diferenciaY/abs(diferenciaY);	
+		sentidoY = diferenciaY/Math.abs(diferenciaY);	
 
 		let _x = origen[0];
 		let _y = origen[1];
@@ -912,12 +955,12 @@ class Juego {
 	}
 
 	posicionEsValida(_tablero, posOrigen, posDestino){
-		let _pieza = abs(_tablero[posOrigen[0]][posOrigen[1]]);
-		let _bando = (_tablero[posOrigen[0]][posOrigen[1]])/abs(_tablero[posOrigen[0]][posOrigen[1]]);
+		let _pieza = Math.abs(_tablero[posOrigen[0]][posOrigen[1]]);
+		let _bando = (_tablero[posOrigen[0]][posOrigen[1]])/Math.abs(_tablero[posOrigen[0]][posOrigen[1]]);
 		if(_pieza==0) return false;
 
 		// no puede comer a la misma pieza
-		if(_tablero[posDestino[0]][posDestino[1]] / abs(_tablero[posDestino[0]][posDestino[1]]) == _bando ){
+		if(_tablero[posDestino[0]][posDestino[1]] / Math.abs(_tablero[posDestino[0]][posDestino[1]]) == _bando ){
 			return false;
 		}
 
@@ -928,8 +971,8 @@ class Juego {
 		// también util para movimiento posible
 		let valido = false;
 
-		let _pieza = abs(_tablero[posOrigen[0]][posOrigen[1]]);
-		let _bando = (_tablero[posOrigen[0]][posOrigen[1]])/abs(_tablero[posOrigen[0]][posOrigen[1]]);
+		let _pieza = Math.abs(_tablero[posOrigen[0]][posOrigen[1]]);
+		let _bando = (_tablero[posOrigen[0]][posOrigen[1]])/Math.abs(_tablero[posOrigen[0]][posOrigen[1]]);
 		if(_pieza==0) return false;
 
 		switch(_pieza){
@@ -948,7 +991,7 @@ class Juego {
 				
 				if(posDestino[0]==posOrigen[0]-1*_bando
 					&& _tablero[posDestino[0]][posDestino[1]] != 0 
-					&& abs(posDestino[1]-posOrigen[1])==1) valido = true; 
+					&& Math.abs(posDestino[1]-posOrigen[1])==1) valido = true; 
 
 
 				 // Peón al paso
@@ -960,18 +1003,18 @@ class Juego {
 					//Si la letra el peón al paso es igual la columna de destino entonces validar si se puede comer
 						if(posDestino[0]==posOrigen[0]-1*_bando
 							&& _tablero[posDestino[0]][posDestino[1]] == 0 
-							&& abs(posDestino[1]-posOrigen[1])==1) valido = true; 
+							&& Math.abs(posDestino[1]-posOrigen[1])==1) valido = true; 
 
 
 				break;
 			case 2: // Caballo
-				if((abs(posDestino[0]-posOrigen[0])==2 && abs(posDestino[1]-posOrigen[1]) == 1)
-				|| (abs(posDestino[0]-posOrigen[0])==1 && abs(posDestino[1]-posOrigen[1]) == 2)
+				if((Math.abs(posDestino[0]-posOrigen[0])==2 && Math.abs(posDestino[1]-posOrigen[1]) == 1)
+				|| (Math.abs(posDestino[0]-posOrigen[0])==1 && Math.abs(posDestino[1]-posOrigen[1]) == 2)
 				) valido = true;
 			
 				break;
 			case 3: // Alfil
-				if(abs(posDestino[0]-posOrigen[0])==abs(posDestino[1]-posOrigen[1])) 
+				if(Math.abs(posDestino[0]-posOrigen[0])==Math.abs(posDestino[1]-posOrigen[1])) 
 					valido = this.validaObstaculo(_tablero,posOrigen,posDestino);
 				
 				break;
@@ -982,7 +1025,7 @@ class Juego {
 				}
 				break;
 			case 5: // Dama
-				if((abs(posDestino[0]-posOrigen[0])==abs(posDestino[1]-posOrigen[1]))
+				if((Math.abs(posDestino[0]-posOrigen[0])==Math.abs(posDestino[1]-posOrigen[1]))
 				|| (posDestino[0]==posOrigen[0]||posDestino[1] ==posOrigen[1]))
 				valido = this.validaObstaculo(_tablero,posOrigen,posDestino);
 				break;
@@ -990,7 +1033,7 @@ class Juego {
 
 				
 
-				if(	abs(posDestino[0]-posOrigen[0])<=1	&& abs(posDestino[1]-posOrigen[1])<=1 ) valido = true;
+				if(	Math.abs(posDestino[0]-posOrigen[0])<=1	&& Math.abs(posDestino[1]-posOrigen[1])<=1 ) valido = true;
 								
 				// Enrroque
 				let _sentidoEnroque = posDestino[1]-posOrigen[1];
@@ -1002,7 +1045,7 @@ class Juego {
 						|| (this.fenEnrroque.indexOf('q') >-1 && _sentidoEnroque==-2))
 					)
 				)
-				if(abs(posDestino[0]==posOrigen[0]) && abs(posDestino[1]-posOrigen[1])==2 ){
+				if(posDestino[0]==posOrigen[0] && Math.abs(posDestino[1]-posOrigen[1])==2 ){
 					let sentido = posDestino[1]-posOrigen[1];
 					let posTorre = [posOrigen[0],_tablero[0].length-1]; // ubicamos posición de la torre.
 					if(sentido<0) posTorre = [posOrigen[0],0];

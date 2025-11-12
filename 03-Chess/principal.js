@@ -1,6 +1,31 @@
 let width = screen.width, height = screen.height;
 let tablero, img;
 
+// --- Variables para el Test Runner Automático ---
+const MODO_TEST = true; // Poner en true para activar las pruebas automáticas
+const NUM_PARTIDAS_TEST = 100; // Número de partidas a simular
+let contadorPartidas = 0;
+let logErrores = [];
+let estadoTest = "Iniciando...";
+
+// --- Capturador de Errores Global ---
+window.onerror = function(message, source, lineno, colno, error) {
+    const errorInfo = {
+        mensaje: message,
+        fuente: source,
+        linea: lineno,
+        partidaNro: contadorPartidas + 1,
+        movimientoNro: tablero ? tablero.movimientos.length : 0,
+        turno: tablero ? tablero.turno : 'N/A'
+    };
+    logErrores.push(errorInfo);
+    // Detenemos el bucle de dibujado para inspeccionar el estado.
+    noLoop(); 
+    estadoTest = "¡ERROR DETECTADO! Revisar consola y log de errores.";
+    console.error("ERROR CAPTURADO POR EL TEST RUNNER:", errorInfo);
+    return true; // Previene que el error se muestre en la consola por defecto.
+};
+
 
 function preload(){
 	img = loadImage('img/chess.png');
@@ -39,7 +64,10 @@ function setup() {
 	tablero.cargaPiezas(img);
 	
 	
-	//moveAuto(); // Se activa para que las blancas jueguen automáticamente
+	if (MODO_TEST) {
+		estadoTest = `Jugando partida ${contadorPartidas + 1} de ${NUM_PARTIDAS_TEST}...`;
+		moveAuto();
+	}
 	//mueveRandom(); //juega solo en random
 	
 }
@@ -54,6 +82,23 @@ function cargaFen(){
 
 
 function draw() {
+	// --- Lógica de Reporte del Test Runner ---
+	if (MODO_TEST) {
+		const reportDiv = document.getElementById('test-report');
+		if (reportDiv) {
+			let errorDetails = logErrores.map(e => `  - ${e.mensaje} (Partida ${e.partidaNro}, Movimiento ${e.movimientoNro})`).join('\n');
+			reportDiv.textContent = 
+`=========================
+TEST RUNNER DE AJEDREZ
+=========================
+Estado: ${estadoTest}
+Partidas Jugadas: ${contadorPartidas} / ${NUM_PARTIDAS_TEST}
+Errores Capturados: ${logErrores.length}
+${logErrores.length > 0 ? 'Detalles de Errores:\n' + errorDetails : ''}
+`;
+		}
+	}
+
 	//background(0);
 	clear();
 	tablero.dibujar([255,200,12,255]);
@@ -136,97 +181,59 @@ function mouseDragged() {
 }
 
 function touchEnded() {
-	
-       let pos = tablero.fCoordMouse(mouseX,mouseY);
-	//  aquí ya debería estar seleccionada la pieza en otro evento
+	// 1. Si no hay una pieza seleccionada, no hacer nada.
+	if (tablero.posSel[0] === -1) {
+		return;
+	}
 
+	// 2. Encontrar el objeto de la pieza seleccionada en el array de piezas.
+	const piezaSeleccionada = tablero.piezas.find(p => p.pos[0] === tablero.posSel[0] && p.pos[1] === tablero.posSel[1]);
 
-	for(i=0;i<tablero.piezas.length;i++){ 
-		// el buqle es para buscar la pieza seleccinada. aunque también se podría ubicar solo con las coordenadas posSel
+	// 3. Si se encontró la pieza, intentar moverla a la posición del ratón.
+	if (piezaSeleccionada) {
+		const posDestino = tablero.fCoordMouse(mouseX, mouseY);
+		
+		// Validar que el movimiento está dentro del tablero y ejecutarlo.
+		if (tablero.tablero[0].length * tablero.tam >= mouseX && tablero.tablero.length * tablero.tam >= mouseY) {
+			if (tablero.mover(piezaSeleccionada, posDestino) > 0) {
+				tablero.actualizarEstadoJuego();
+			}
+		}
+	}
 
-		if(tablero.posSel[0]>-1){
-			
-			if(tablero.piezas[i].pos[0] == tablero.posSel[0] && tablero.piezas[i].pos[1] == tablero.posSel[1]){
-				//valida que la pieza sea la seleccionada
-				if(tablero.tablero[0].length*tablero.tam>=mouseX && tablero.tablero.length*tablero.tam>=mouseY){
-				tablero.mover(tablero.piezas[i],pos);
-				tablero.cargaPiezas(img);	// crea las piezas en el tablero a partir de la matriz
-				console.log("pieza:",tablero.piezas[i]);
+	// 4. Limpiar la selección y reajustar las coordenadas visuales de todas las piezas a la cuadrícula.
+	tablero.posSel = [-1, -1];
+	tablero.piezaSel = [-1, -1];
+	for (const p of tablero.piezas) {
+		p.coord = [p.pos[0] * tablero.tam, p.pos[1] * tablero.tam];
+	}
+
+	// 5. Si es el turno de la IA, ejecutar su lógica.
+	if (tablero.jaqueMate === 0 && tablero.tablas === 0 && tablero.turno < 0 && tablero.auto_n) {
+		if (tablero.movimientos.length < 3) {
+			tablero.moverRandom();
+			tablero.actualizarEstadoJuego();
+		} else {
+			// Usa el método clonar para que la IA piense en un estado limpio.
+			let juegoTmp = tablero.clonar();
+			let mov = juegoTmp.moverMejorValor(juegoTmp);
+			tablero.tablas = juegoTmp.tablas;
+			tablero.jaqueMate = juegoTmp.jaqueMate;
+
+			// Traduce la pieza de la simulación a la pieza real del tablero principal.
+			if (mov[0]) {
+				const piezaOrigenPos = mov[0].pos;
+				const piezaReal = tablero.piezas.find(p => p.pos[0] === piezaOrigenPos[0] && p.pos[1] === piezaOrigenPos[1]);
+				
+				if (piezaReal && tablero.mover(piezaReal, mov[1]) > 0) {
+					tablero.actualizarEstadoJuego();
+				} else {
+					console.error("La IA eligió un movimiento ilegal o no se encontró la pieza:", mov);
 				}
 			}
-			
 		}
-		if(tablero.piezas[i])
-		tablero.piezas[i].coord = [tablero.piezas[i].pos[0]*tablero.tam,tablero.piezas[i].pos[1]*tablero.tam];
-
-
+		document.getElementById("factor").value = tablero.readFEN();
 	}
-
-	if(tablero.jaqueMate ==0 && tablero.tablas==0){
-
-		if(tablero.turno<0) {
-			if(tablero.auto_n)
-			if(tablero.movimientos.length <3){
-
-				tablero.moverRandom();
-				tablero.cargaPiezas(img);
-			
-			}else{
-				let juegoTmp = new Juego(tablero.getTableroJson());
-				//Para inicializar la función diferenciada
-				juegoTmp.fdeBlancas = tablero.fdeBlancas;
-				juegoTmp.fdeNegras = tablero.fdeNegras;
-
-				juegoTmp.updateFEN(tablero.readFEN());
-				juegoTmp.cargaPiezas(img);
-				juegoTmp.tripleRep=tablero.tripleRep;
-
-				let mov = juegoTmp.moverMejorValor(juegoTmp);
-				tablero.tablas=juegoTmp.tablas;
-				tablero.jaqueMate=juegoTmp.jaqueMate;
-				tablero.mover(mov[0],mov[1]);
-				tablero.cargaPiezas(img);
-				console.log("pieza:",mov[0]);
-				console.log(mov);
-
-			}
-
-			document.getElementById("factor").value = tablero.readFEN();
-								
-		
-		}else{
-			/*
-			if(tablero.movimientos.length <3){
-
-				tablero.moverRandom();
-				tablero.cargaPiezas(img);
-			
-			}else{
-				
-				let juegoTmp = new Juego(tablero.getTableroJson());
-				juegoTmp.updateFEN(tablero.readFEN());
-				juegoTmp.cargaPiezas(img);
-				let mov = juegoTmp.moverMejorValor(juegoTmp);
-				tablero.tablas=juegoTmp.tablas;
-				tablero.jaqueMate=juegoTmp.jaqueMate;
-				tablero.mover(mov[0],mov[1]);
-				tablero.cargaPiezas(img);
-				
-				
-			}
-			*/
-
-		}
-	
-	}
-	
-	
-	//tablero.moverRandom();
-	
-	
-	
-
-
 }
 
 
@@ -247,14 +254,13 @@ function mueveRandom()
   if(tablero.nroMedioMovPeon>49) tablero.tablas=1; //
   
   if(tablero.jaqueMate+tablero.tablas==0)
-  sleep(500).then(function() {
-	tablero.moverRandom();
-	tablero.cargaPiezas(img);
-
-    console.log("Tarea: No espera " + Date())
-    mueveRandom();
-  })
-/*
+  	sleep(500).then(function() {
+  	tablero.moverRandom();
+  	tablero.actualizarEstadoJuego();
+  
+      console.log("Tarea: No espera " + Date())
+      mueveRandom();
+    })/*
   await sleep(500)
   tablero.moverRandom();
   console.log("Await: Espera respuesta " + Date())
@@ -265,85 +271,50 @@ function mueveRandom()
 
 function moveAuto()
 {
- 
-  if(tablero.jaqueMate+tablero.tablas>0) return;
-  sleep(1500).then(function() {
-
-	if(tablero.turno<0) {
-		if(tablero.movimientos.length <3){
-
-			tablero.moverRandom();
-			tablero.cargaPiezas(img);
+	// --- Lógica del Test Runner ---
+	// Condición de fin de partida (jaque mate, tablas, o más de 200 movimientos para evitar bucles infinitos)
+	if (tablero.jaqueMate + tablero.tablas > 0 || tablero.movimientos.length > 200) {
+		contadorPartidas++;
+		estadoTest = `Partida ${contadorPartidas} finalizada. Jugando partida ${contadorPartidas + 1} de ${NUM_PARTIDAS_TEST}...`;
 		
-		}else{
-			let juegoTmp = new Juego(tablero.getTableroJson());
-			//Para inicializar la función diferenciada
-			juegoTmp.fdeBlancas = tablero.fdeBlancas;
-			juegoTmp.fdeNegras = tablero.fdeNegras;
-
-			juegoTmp.updateFEN(tablero.readFEN());
-			juegoTmp.cargaPiezas(img);
-			juegoTmp.tripleRep=tablero.tripleRep; // conteo de triple
-
-			let mov = juegoTmp.moverMejorValor(juegoTmp);
-			tablero.tablas=juegoTmp.tablas;
-			tablero.jaqueMate=juegoTmp.jaqueMate;
-			tablero.mover(mov[0],mov[1]);
-			tablero.cargaPiezas(img);
-			console.log("Juega Valor:" + Date());
-			console.log(mov);
-
+		if (contadorPartidas >= NUM_PARTIDAS_TEST) {
+			estadoTest = `¡ÉXITO! ${NUM_PARTIDAS_TEST} partidas completadas sin errores.`;
+			console.log(estadoTest);
+			noLoop(); // Detiene el juego
+			return;
 		}
-		
-	}else{
-		/*
-		tablero.moverRandom();
+
+		// Reinicia el tablero para la siguiente partida
+		tablero = new Juego([
+			[-4,-2,-3,-5,-6,-3,-2,-4], [-1,-1,-1,-1,-1,-1,-1,-1], [0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0],
+			[0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0], [1,1,1,1,1,1,1,1], [4,2,3,5,6,3,2,4]
+		]);
 		tablero.cargaPiezas(img);
-		
-		console.log("Juega Ramdom:" + Date());
-		*/
-
-		
-		/*
-		console.log("Juega Valor:" + Date());
-		*/
-
-		if(tablero.movimientos.length <3){
-
-			tablero.moverRandom();
-			tablero.cargaPiezas(img);
-		
-		}else{
-			let juegoTmp = new Juego(tablero.getTableroJson());
-			//Para inicializar la función diferenciada
-			juegoTmp.fdeBlancas = tablero.fdeBlancas;
-			juegoTmp.fdeNegras = tablero.fdeNegras;
-
-			juegoTmp.updateFEN(tablero.readFEN());
-			juegoTmp.cargaPiezas(img);
-			juegoTmp.tripleRep=tablero.tripleRep;
-
-			let mov = juegoTmp.moverMejorValor(juegoTmp);
-			tablero.tablas=juegoTmp.tablas;
-			tablero.jaqueMate=juegoTmp.jaqueMate;
-			tablero.mover(mov[0],mov[1]);
-			tablero.cargaPiezas(img);
-			console.log("Juega Valor:" + Date());
-			console.log(mov);
-
-		}
 	}
 
-  	//console.log("b:"+tablero.valorb+", n:"+tablero.valorn+", mov:"+tablero.nroMedioMovPeon);
-    moveAuto();
-  })
-/*
-  await sleep(500)
-  tablero.moverRandom();
-  console.log("Await: Espera respuesta " + Date())
-  mueveRandom();
-  */
+	// --- Lógica de Juego de la IA (el código que ya teníamos) ---
+	sleep(50).then(function() { // Reducido el delay para acelerar las pruebas
+		let juegoTmp = tablero.clonar();
+		let mov = juegoTmp.moverMejorValor(juegoTmp);
+		tablero.tablas = juegoTmp.tablas;
+		tablero.jaqueMate = juegoTmp.jaqueMate;
 
+		if (mov[0]) {
+			const piezaOrigenPos = mov[0].pos;
+			const piezaReal = tablero.piezas.find(p => p.pos[0] === piezaOrigenPos[0] && p.pos[1] === piezaOrigenPos[1]);
+			
+			if (piezaReal && tablero.mover(piezaReal, mov[1]) > 0) {
+				tablero.actualizarEstadoJuego();
+			} else {
+				// Si hay un error, el manejador global window.onerror lo capturará.
+				// Forzamos un error para asegurarnos de que se capture.
+				throw new Error(`La IA eligió un movimiento ilegal o no se encontró la pieza: ${mov}`);
+			}
+		}
+
+		// Llamada recursiva para el siguiente turno de la partida actual
+		moveAuto();
+	});
 }
 /*
 		tablero.moverRandom();
