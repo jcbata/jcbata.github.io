@@ -36,3 +36,22 @@ Basado en estos hallazgos, el camino a seguir no es "corregir" la función ganad
     - Estructura de peones (peones doblados, aislados, pasados).
     - Actividad de las piezas (torres en columnas abiertas, etc.).
 3.  **Validación Continua:** Utilizar el test runner para validar científicamente el impacto de cada nuevo cambio, asegurando que cualquier modificación realmente mejore el rendimiento de la IA.
+
+---
+
+### Implementación de Minimax y Mejoras de UI (Nov 2025)
+
+Continuando con la experimentación, se han introducido mejoras significativas tanto en la capacidad de la IA como en las herramientas de visualización y depuración.
+
+#### Optimización con Web Workers
+- **Minimax Paralelo:** Se ha refactorizado el algoritmo Minimax para que se ejecute en paralelo utilizando Web Workers. La función `pensamientoMoverConMinimax` ahora actúa como un "gerente" que distribuye el cálculo de las ramas del árbol de movimientos entre múltiples hilos.
+- **Rendimiento:** Esta arquitectura permite aprovechar las CPUs multinúcleo modernas, acelerando significativamente el tiempo de respuesta de la IA en búsquedas de mayor profundidad. Se ha añadido un medidor de tiempo en pantalla para monitorizar el rendimiento.
+
+#### Visualización y Depuración
+- **Doble Barra de Evaluación:** Se ha implementado una segunda barra de evaluación. Ahora la interfaz muestra dos barras paralelas que representan la "opinión" de la posición actual según cada una de las funciones de evaluación asignadas (a blancas y negras), permitiendo una comparación visual directa de sus heurísticas.
+- **Acceso Global para Depuración:** Se ha expuesto el objeto principal `tablero` al ámbito global (`window`) para facilitar la inspección y depuración en tiempo real desde la consola del navegador.
+
+#### Corrección de Bugs Críticos
+- **Detección de Jaque Mate:** Se corrigió un error fundamental en la lógica de la IA que le impedía reconocer un jaque mate. El problema radicaba en que el generador de movimientos no validaba si una jugada dejaba al propio rey en jaque, lo que hacía que la IA eligiera movimientos ilegales en situaciones de mate. La nueva implementación filtra estos movimientos y ahora detecta correctamente el final de la partida.
+- **Robustez del Test Runner:** Se solucionaron varios errores de `TypeError` que detenían las pruebas automáticas. Estos fallos se debían a desincronizaciones entre la matriz del tablero y la lista de objetos de piezas durante la simulación. Se han añadido salvaguardas para hacer el sistema más robusto.
+

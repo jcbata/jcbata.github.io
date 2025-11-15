@@ -41,10 +41,19 @@ export class Juego {
 		//valoración
 		this.valorb=0;
 		this.valorn=0;
+        // Nuevas propiedades para las evaluaciones separadas
+        this.valorb_fdeB = 0; // Valor de las piezas blancas según la función de evaluación de las blancas
+        this.valorn_fdeB = 0; // Valor de las piezas negras según la función de evaluación de las blancas
+        this.valorb_fdeN = 0; // Valor de las piezas blancas según la función de evaluación de las negras
+        this.valorn_fdeN = 0; // Valor de las piezas negras según la función de evaluación de las negras
 
 		// Las funciones de evaluación se asignan desde principal.js
 		//this.fdeBlancas=valorPieza;
 		//this.fdeNegras=valorPieza;
+
+        // Las funciones de pensamiento (IA) se asignan desde principal.js
+        this.fPensamientoBlancas = null;
+        this.fPensamientoNegras = null;
 
 		this.juego = {piezas:[],tablero:tabl,turno:1,valorb:0,valorn:0,movimientos:[],nroMedioMovPe:0}
 
@@ -77,6 +86,10 @@ export class Juego {
 		// Copia las funciones de evaluación.
 		clon.fdeBlancas = this.fdeBlancas;
 		clon.fdeNegras = this.fdeNegras;
+
+        // Copia las funciones de pensamiento.
+        clon.fPensamientoBlancas = this.fPensamientoBlancas;
+        clon.fPensamientoNegras = this.fPensamientoNegras;
 		
 		// Inicializa el clon con sus piezas y movimientos calculados.
 		clon.tam = this.tam; // El tamaño del tablero es necesario para la creación de piezas.
@@ -255,6 +268,11 @@ export class Juego {
 									}
 								}
 
+                                if (typeof piezaDest === 'undefined') {
+                                    console.error("Desync detected! Board has a piece at [" + i + "," + j + "] but no object found in pieces array. Skipping interaction.");
+                                    continue; 
+                                }
+
 								if (this.piezas[k].bando == piezaDest.bando) {
 									piezaDest.defendidoPor.push(this.piezas[k].pos);
 								} else {
@@ -272,15 +290,48 @@ export class Juego {
 		}
 
 		// Calcula el valor de cada pieza y el valor total de cada bando
-		for (let k = 0; k < this.piezas.length; k++) {
-			if (this.piezas[k].bando > 0) {
-				this.fdeBlancas(this.piezas[k]);
-				this.valorb += this.piezas[k].valor;
-			} else {
-				this.fdeNegras(this.piezas[k]);
-				this.valorn += this.piezas[k].valor;
-			}
-		}
+        // --- INICIO DE LA LÓGICA DE DOBLE EVALUACIÓN ---
+
+        // Resetea todos los contenedores de valor.
+		this.valorb_fdeB = 0; this.valorn_fdeB = 0;
+		this.valorb_fdeN = 0; this.valorn_fdeN = 0;
+		this.valorb = 0; this.valorn = 0;
+
+        // Guarda los valores originales de las piezas, ya que las funciones de evaluación los modifican.
+        const originalValues = this.piezas.map(p => p.valor);
+
+        // 1. Primera Pasada: Evaluar todas las piezas con la función de las blancas (fdeBlancas).
+        for (let k = 0; k < this.piezas.length; k++) {
+            const pieza = this.piezas[k];
+            this.fdeBlancas(pieza, this.turno); // fdeBlancas modifica pieza.valor
+            if (pieza.bando > 0) { this.valorb_fdeB += pieza.valor; }
+            else { this.valorn_fdeB += pieza.valor; }
+        }
+
+        // Restaura los valores originales para asegurar que la segunda pasada no se vea afectada.
+        for (let k = 0; k < this.piezas.length; k++) {
+            this.piezas[k].valor = originalValues[k];
+        }
+
+        // 2. Segunda Pasada: Evaluar todas las piezas con la función de las negras (fdeNegras).
+        for (let k = 0; k < this.piezas.length; k++) {
+            const pieza = this.piezas[k];
+            this.fdeNegras(pieza, this.turno); // fdeNegras modifica pieza.valor
+            if (pieza.bando > 0) { this.valorb_fdeN += pieza.valor; }
+            else { this.valorn_fdeN += pieza.valor; }
+        }
+
+        // Restaura los valores originales una vez más para mantener el estado del juego consistente.
+        for (let k = 0; k < this.piezas.length; k++) {
+            this.piezas[k].valor = originalValues[k];
+        }
+
+        // Asigna los valores "oficiales" para la lógica del juego principal (usado por Minimax, etc.)
+        // Esto mantiene el comportamiento anterior: cada bando se evalúa a sí mismo.
+        this.valorb = this.valorb_fdeB;
+        this.valorn = this.valorn_fdeN;
+        
+        // --- FIN DE LA LÓGICA DE DOBLE EVALUACIÓN ---
 
 		// Finalmente, valida si hay jaque
 		this.jaque = this.validaJaque(this.tablero);
@@ -314,122 +365,6 @@ export class Juego {
 		this.tablero = this.movimientos[this.movimientos.length-1];
 		this.turno=this.turno*-1;
 	}
-	
-	moverMejorValor(_juego){
-		//función para mover el Mejor Valor
-		//if(this.turno!=-1) return; //solo negras
-
-		const piezasTurno = _juego.piezas.filter(_pz => _pz.bando == this.turno && _pz.movPosibles.length >0);
-		let mejorValor=-Infinity;
-		let mejorPieza,mejorDestino;
-		//agregado para movimiento para evitar triple repetición
-		let mejorValor2=-Infinity;
-		let mejorPieza2,mejorDestino2;
-		//------------------------------------------------------
-		for(let i=0; i<piezasTurno.length; i++){
-			const piezaOriginal = piezasTurno[i];
-
-			for(let j=0; j<piezaOriginal.movPosibles.length; j++){
-				const destino = piezaOriginal.movPosibles[j];
-
-				// Crea una simulación profunda para probar el movimiento.
-				let _otroJuego = _juego.clonar();
-
-				// Busca la pieza correspondiente DENTRO de la simulación.
-				const piezaEnSimulacion = _otroJuego.piezas.find(p => 
-					p.pos[0] === piezaOriginal.pos[0] && p.pos[1] === piezaOriginal.pos[1]
-				);
-
-				if (!piezaEnSimulacion) continue; // Salvaguarda por si no se encuentra la pieza.
-
-				// Ejecuta el movimiento con la pieza que pertenece a la simulación.
-				if(_otroJuego.mover(piezaEnSimulacion, destino)>0){
-					_otroJuego.actualizarEstadoJuego();
-					
-					if(piezaOriginal.bando<0)
-						if(_otroJuego.valorn-_otroJuego.valorb>mejorValor){
-							mejorValor2=mejorValor;
-							mejorPieza2=mejorPieza;
-							mejorDestino2=mejorDestino;
-
-							mejorValor=_otroJuego.valorn-_otroJuego.valorb;
-							mejorPieza = piezaOriginal; // Guardamos la pieza ORIGINAL, no la de la simulación.
-							mejorDestino = destino;
-						}
-					if(piezaOriginal.bando>0)
-						if(_otroJuego.valorb-_otroJuego.valorn>mejorValor){
-							mejorValor2=mejorValor;
-							mejorPieza2=mejorPieza;
-							mejorDestino2=mejorDestino;
-
-							mejorValor=_otroJuego.valorb-_otroJuego.valorn;
-							mejorPieza = piezaOriginal; // Guardamos la pieza ORIGINAL, no la de la simulación.
-							mejorDestino = destino;
-						}
-				}
-
-
-			}
-		}
-		if(typeof mejorPieza==='undefined'){
-			if(this.jaque.jaqueKb != 0 || this.jaque.jaqueKn !=0) {
-				this.jaqueMate=1;
-				console.log("Jaque Mate!");
-				this.mensaje="Jaque Mate!";
-				
-			}
-			else{
-				this.tablas=1;
-				console.log("Tablas!");
-				this.mensaje="Tablas!";
-				
-			}
-		}
-
-		// Evita triple repetición
-		
-		//let _lastmov = this.histoFEN[this.histoFEN.length-1];
-		//let _rep = this.histoFEN.filter(mov => mov.split(' ')[0] == _lastmov.split(' ')[0]).length;
-		
-		if(this.tripleRep >1 && typeof mejorPieza2 !=='undefined'){
-			console.log("Otro mejor valor");
-			console.log([mejorPieza,mejorDestino]);
-			mejorPieza=mejorPieza2;
-			mejorDestino=mejorDestino2;
-			
-		}
-		//-----------------------------
-
-		//console.log([mejorPieza,mejorDestino]);
-		return [mejorPieza,mejorDestino];
-
-	}
-
-	moverRandom(_maxAttempts = 10){ // Max attempts to find a legal move
-		const piezasTurno = this.piezas.filter(_pz => _pz.bando == this.turno && _pz.movPosibles.length >0);
-		if (piezasTurno.length === 0) {
-			// No hay piezas con movimientos posibles, podría ser jaque mate o ahogado.
-			// La lógica de fin de partida se encargará de esto.
-			return -1; 
-		}
-
-		for (let attempt = 0; attempt < _maxAttempts; attempt++) {
-			let _pieza = piezasTurno[this.randomInteger(0,piezasTurno.length-1)]; 
-			if (!_pieza || _pieza.movPosibles.length === 0) continue; // Si la pieza no tiene movimientos, intenta con otra.
-
-			let _destino = _pieza.movPosibles[this.randomInteger(0,_pieza.movPosibles.length-1)];
-			
-			// Busca la pieza real en el array principal del juego (this.piezas)
-			const piezaReal = this.piezas.find(p => p.pos[0] === _pieza.pos[0] && p.pos[1] === _pieza.pos[1]);
-			if (!piezaReal) continue; // Salvaguarda, no debería pasar si piezasTurno está bien filtrado.
-
-			if (this.mover(piezaReal, _destino) > 0) {
-				return 1; // Movimiento exitoso
-			}
-		}
-		return -1; // Falló en encontrar un movimiento legal aleatorio después de los intentos.
-	}
-
 
 	mover(pieza,posDestino=[]) {
 		
@@ -670,8 +605,8 @@ export class Juego {
 			this.mensaje="Jaque!";
 			if(this.nroMedioMovPeon>49){ 
 				this.tablas=1;
-				console.log("59 Movimientos !");
-				this.mensaje="Tablas!-más de 59 movimientos";
+				console.log("49 Movimientos !");
+				this.mensaje="Tablas!-más de 49 movimientos";
 			}
 
 			// Si Jaque Mate.?
@@ -827,27 +762,50 @@ export class Juego {
 		
 	}
 
-	dibujaBarraValor(_juego){
+	dibujaBarrasDeValor(_juego){
 		let _tam = this.tam;
-		let _margen=this.margen;
-		let _ancho = 10;
-		let _x = _juego.tablero[0].length*_tam+_margen+_ancho/2;
+		let _margen = this.margen;
+		let _ancho = 10; // Ancho de cada barra
+        let _gap = 5; // Espacio entre las barras
+
 		let _altoTotal = _juego.tablero[0].length*_tam+_margen/2;
 
-		let _alton= _altoTotal*_juego.valorn /(_juego.valorn+_juego.valorb);
-		let _altob= _altoTotal*_juego.valorb /(_juego.valorn+_juego.valorb);
+        // --- Barra 1: Perspectiva de la IA Blanca ---
+		let _x1 = _juego.tablero[0].length*_tam+_margen+_ancho/2;
+        let totalValB = _juego.valorn_fdeB + _juego.valorb_fdeB;
+        if (totalValB === 0) totalValB = 1; // Evitar división por cero
+		let _altonB = _altoTotal * _juego.valorn_fdeB / totalValB;
+		let _altobB = _altoTotal * _juego.valorb_fdeB / totalValB;
 
 		stroke(0);
 		fill(0);
-		rect(_x, 0, _ancho,_alton);
+		rect(_x1, 0, _ancho, _altonB);
 		fill(255);
-		rect(_x, _alton, _ancho,_altob);
-	
-		fill(255);
-		//text(round(_juego.valorn,2),_altoTotal+_ancho*2,_alton/2);
-		//text(round(_juego.valorb,2),_altoTotal+_ancho*2,_alton+_altob/2);
+		rect(_x1, _altonB, _ancho, _altobB);
+        // Etiqueta para la barra
+        fill(255);
+        text("B", _x1, _altoTotal + 12);
 
-		text(round(_juego.valorb-_juego.valorn,2),_altoTotal+_ancho*2,_alton);
+
+        // --- Barra 2: Perspectiva de la IA Negra ---
+        let _x2 = _x1 + _ancho + _gap;
+        let totalValN = _juego.valorn_fdeN + _juego.valorb_fdeN;
+        if (totalValN === 0) totalValN = 1; // Evitar división por cero
+		let _altonN = _altoTotal * _juego.valorn_fdeN / totalValN;
+		let _altobN = _altoTotal * _juego.valorb_fdeN / totalValN;
+
+		stroke(0);
+		fill(0);
+		rect(_x2, 0, _ancho, _altonN);
+		fill(255);
+		rect(_x2, _altonN, _ancho, _altobN);
+        // Etiqueta para la barra
+        fill(255);
+        text("N", _x2, _altoTotal + 12);
+
+        // Muestra la diferencia de valor para la perspectiva del jugador actual
+        let diff = (_juego.turno > 0) ? (_juego.valorb_fdeB - _juego.valorn_fdeB) : (_juego.valorn_fdeN - _juego.valorb_fdeN);
+		text(round(diff, 2), _x2 + _ancho, _altoTotal / 2);
 	}
 
 	dibujaMensaje(_juego){
@@ -867,6 +825,7 @@ export class Juego {
 	dibujaMovimientoPosible(i,j,color=[12,100,240,80]){
 		
 		// Si no se selecciona una Pieza no continúa
+		if(this.posSel[0]===-1) return;
 		if(!this.piezaSel || this.piezaSel.length!=2 || this.piezaSel[0]<0) return;
 		if(this.tablero[this.piezaSel[0]][this.piezaSel[1]]==0) return;
 		
@@ -1043,7 +1002,228 @@ export class Juego {
 		return Math.floor(Math.random() * (max - min + 1)) + min;
 	}
 
+	
+} // End of Juego class
+
+// Nueva función de pensamiento: Mover el mejor valor (equivalente al antiguo moverMejorValor)
+export function pensamientoMoverMejorValor(_juego){
+		//función para mover el Mejor Valor
+		//if(_juego.turno!=-1) return; //solo negras
+
+		const piezasTurno = _juego.piezas.filter(_pz => _pz.bando == _juego.turno && _pz.movPosibles.length >0);
+		let mejorValor=-Infinity;
+		let mejorPieza,mejorDestino;
+		//agregado para movimiento para evitar triple repetición
+		let mejorValor2=-Infinity;
+		let mejorPieza2,mejorDestino2;
+		//------------------------------------------------------
+		for(let i=0; i<piezasTurno.length; i++){
+			const piezaOriginal = piezasTurno[i];
+
+			for(let j=0; j<piezaOriginal.movPosibles.length; j++){
+				const destino = piezaOriginal.movPosibles[j];
+
+				// Crea una simulación profunda para probar el movimiento.
+				let _otroJuego = _juego.clonar();
+
+				// Busca la pieza correspondiente DENTRO de la simulación.
+				const piezaEnSimulacion = _otroJuego.piezas.find(p => 
+					p.pos[0] === piezaOriginal.pos[0] && p.pos[1] === piezaOriginal.pos[1]
+				);
+
+				if (!piezaEnSimulacion) continue; // Salvaguarda por si no se encuentra la pieza.
+
+				// Ejecuta el movimiento con la pieza que pertenece a la simulación.
+				if(_otroJuego.mover(piezaEnSimulacion, destino)>0){
+					_otroJuego.actualizarEstadoJuego();
+					
+					if(piezaOriginal.bando<0)
+						if(_otroJuego.valorn-_otroJuego.valorb>mejorValor){
+							mejorValor2=mejorValor;
+							mejorPieza2=mejorPieza;
+							mejorDestino2=mejorDestino;
+
+							mejorValor=_otroJuego.valorn-_otroJuego.valorb;
+							mejorPieza = piezaOriginal; // Guardamos la pieza ORIGINAL, no la de la simulación.
+							mejorDestino = destino;
+						}
+					if(piezaOriginal.bando>0)
+						if(_otroJuego.valorb-_otroJuego.valorn>mejorValor){
+							mejorValor2=mejorValor;
+							mejorPieza2=mejorPieza;
+							mejorDestino2=mejorDestino;
+
+							mejorValor=_otroJuego.valorb-_otroJuego.valorn;
+							mejorPieza = piezaOriginal; // Guardamos la pieza ORIGINAL, no la de la simulación.
+							mejorDestino = destino;
+						}
+				}
+
+
+			}
+		}
+		if(typeof mejorPieza==='undefined'){
+			if(_juego.jaque.jaqueKb != 0 || _juego.jaque.jaqueKn !=0) {
+				_juego.jaqueMate=1;
+				console.log("Jaque Mate!");
+				_juego.mensaje="Jaque Mate!";
+				
+			}
+			else{
+				_juego.tablas=1;
+				console.log("Tablas!");
+				_juego.mensaje="Tablas!";
+				
+			}
+		}
+
+		// Evita triple repetición
+		
+		//let _lastmov = _juego.histoFEN[_juego.histoFEN.length-1];
+		//let _rep = _juego.histoFEN.filter(mov => mov.split(' ')[0] == _lastmov.split(' ')[0]).length;
+		
+		if(_juego.tripleRep >1 && typeof mejorPieza2 !=='undefined'){
+			console.log("Otro mejor valor");
+			console.log([mejorPieza,mejorDestino]);
+			mejorPieza=mejorPieza2;
+			mejorDestino=mejorDestino2;
+			
+		}
+		//-----------------------------
+
+		//console.log([mejorPieza,mejorDestino]);
+		return [mejorPieza,mejorDestino];
+
+} // End of pensamientoMoverMejorValor function
+
+// Nueva función de pensamiento: Mover aleatoriamente
+export function pensamientoMoverRandom(_juego, _maxAttempts = 10){ // Max attempts to find a legal move
+    const piezasTurno = _juego.piezas.filter(_pz => _pz.bando == _juego.turno && _pz.movPosibles.length >0);
+    if (piezasTurno.length === 0) {
+        // No hay piezas con movimientos posibles, podría ser jaque mate o ahogado.
+        // La lógica de fin de partida se encargará de esto.
+        return -1; 
+    }
+
+    for (let attempt = 0; attempt < _maxAttempts; attempt++) {
+        let _pieza = piezasTurno[_juego.randomInteger(0,piezasTurno.length-1)]; 
+        if (!_pieza || _pieza.movPosibles.length === 0) continue; // Si la pieza no tiene movimientos, intenta con otra.
+
+        let _destino = _pieza.movPosibles[_juego.randomInteger(0,_pieza.movPosibles.length-1)];
+        
+        // Busca la pieza real en el array principal del juego (_juego.piezas)
+        const piezaReal = _juego.piezas.find(p => p.pos[0] === _pieza.pos[0] && p.pos[1] === _pieza.pos[1]);
+        if (!piezaReal) continue; // Salvaguarda, no debería pasar si piezasTurno está bien filtrado.
+
+        if (_juego.mover(piezaReal, _destino) > 0) {
+            return 1; // Movimiento exitoso
+        }
+    }
+    return -1; // Falló en encontrar un movimiento legal aleatorio después de los intentos.
+}
+
+// Nueva función de pensamiento: Implementación de Minimax (Placeholder)
+// Nueva función de pensamiento: Implementación de Minimax con Web Workers
+export function pensamientoMoverConMinimax(_juego, profundidad = 3) {
+    // Esta es la nueva función "gerente" que orquesta los Web Workers.
+    // Devuelve una Promesa que se resolverá con el mejor movimiento encontrado.
+    console.log(`Iniciando búsqueda Minimax paralela con profundidad ${profundidad}`);
+
+    return new Promise((resolve, reject) => {
+        const bandoOriginal = _juego.turno;
+        _juego.actualizarEstadoJuego(); // Ensure possible moves are up to date.
+        const piezasTurno = _juego.piezas.filter(_pz => _pz.bando == _juego.turno && _pz.movPosibles.length > 0);
+
+        const todosLosMovimientos = [];
+        for (const pieza of piezasTurno) {
+            for (const destino of pieza.movPosibles) {
+                todosLosMovimientos.push({ piezaPos: pieza.pos, destino: destino });
+            }
+        }
+
+        if (todosLosMovimientos.length === 0) {
+            if (_juego.jaque.jaqueKb != 0 || _juego.jaque.jaqueKn != 0) {
+                _juego.jaqueMate = 1;
+            } else {
+                _juego.tablas = 1;
+            }
+            resolve(null);
+            return;
+        }
+
+        const workerPromises = todosLosMovimientos.map(move => {
+            return new Promise((resolveWorker, rejectWorker) => {
+                const worker = new Worker('./minimax_worker.js', { type: 'module' });
+
+                worker.onmessage = (e) => {
+                    resolveWorker(e.data);
+                    worker.terminate();
+                };
+                
+                worker.onerror = (err) => {
+                    console.error("Error en Web Worker:", err.message, err.filename, err.lineno);
+                    rejectWorker(err);
+                    worker.terminate();
+                };
+
+                worker.postMessage({
+                    fen: _juego.readFEN(),
+                    move: move.destino,
+                    piezaPos: move.piezaPos,
+                    profundidad: profundidad,
+                    bandoOriginal: bandoOriginal
+                });
+            });
+        });
+
+        Promise.all(workerPromises)
+            .then(resultados => {
+                // PASO 1: Filtrar solo los movimientos que los workers confirmaron como legales (score no es null).
+                const resultadosLegales = resultados.filter(r => r.score !== null);
+
+                // PASO 2: Si no hay movimientos legales, es jaque mate o tablas.
+                if (resultadosLegales.length === 0) {
+                    if (_juego.jaque.jaqueKb != 0 || _juego.jaque.jaqueKn != 0) {
+                        _juego.jaqueMate = 1;
+                    } else {
+                        _juego.tablas = 1;
+                    }
+                    resolve(null); // No hay movimiento para devolver.
+                    return;
+                }
+
+                // PASO 3: Encontrar el mejor movimiento solo entre las opciones legales.
+                let mejorValor = resultadosLegales[0].score;
+                let mejorMovimiento = resultadosLegales[0].move;
+
+                for (let i = 1; i < resultadosLegales.length; i++) {
+                    const res = resultadosLegales[i];
+                    if (res.score > mejorValor) {
+                        mejorValor = res.score;
+                        mejorMovimiento = res.move;
+                    }
+                }
+                
+                const piezaReal = _juego.piezas.find(p => p.pos[0] === mejorMovimiento.piezaPos[0] && p.pos[1] === mejorMovimiento.piezaPos[1]);
+                
+                if (!piezaReal) {
+                    console.error("No se pudo encontrar la pieza real para el mejor movimiento:", mejorMovimiento);
+                    reject("Error al encontrar la pieza del mejor movimiento.");
+                    return;
+                }
+
+                console.log(`Búsqueda finalizada. Mejor movimiento: ${piezaReal.nombre} a ${mejorMovimiento.destino} con puntuación ${mejorValor.toFixed(2)}`);
+                resolve([piezaReal, mejorMovimiento.destino]);
+            })
+            .catch(err => {
+                console.error("Ocurrió un error en la ejecución de los workers de Minimax:", err);
+                reject(err);
+            });
+    });
+}
+
+
+
 
 	
-}
 

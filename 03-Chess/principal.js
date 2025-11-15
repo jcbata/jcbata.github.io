@@ -1,8 +1,9 @@
-import { Juego } from './tablero.js';
+import { Juego, pensamientoMoverMejorValor, pensamientoMoverRandom, pensamientoMoverConMinimax } from './tablero.js';
 import { BIBLIOTECA_EVALUACION } from './evaluacion.js';
 
 let width = screen.width, height = screen.height;
 let tablero, img, x, y;
+let lastMinimaxTime = 0;
 
 // --- Variables para el Test Runner Automático ---
 const MODO_TEST = true; // Poner en true para activar las pruebas automáticas
@@ -63,10 +64,14 @@ function setup() {
 	*/
 	tablero.tam = Math.min(width, height) / 8 / 2;
 	tablero.auto_n=true;
-	// Asigna la función de evaluación "con_estado_buggy" a ambos bandos para comparar
+	// Prueba: Blancas (Mejorada con Centro) vs Negras (Campeona Actual)
 	tablero.fdeNegras = BIBLIOTECA_EVALUACION.con_estado_buggy;
-	tablero.fdeBlancas = BIBLIOTECA_EVALUACION.con_estado_buggy;
+	tablero.fdeBlancas = BIBLIOTECA_EVALUACION.mejorada_con_centro;
 	//tablero.fdeBlancas = BIBLIOTECA_EVALUACION.con_rey_buggy;
+
+    // Asigna las funciones de pensamiento (IA)
+    tablero.fPensamientoNegras = pensamientoMoverConMinimax; // Negras usan el pensamiento de 1 movimiento
+    tablero.fPensamientoBlancas = pensamientoMoverMejorValor; // Blancas usan el pensamiento de 1 movimiento
 	tablero.cargaPiezas(img);
 	
 	
@@ -88,6 +93,7 @@ function cargaFen(){
 
 
 function draw() {
+    window.tablero = tablero; // Expose for debugging
 	// --- Lógica de Reporte del Test Runner ---
 	if (MODO_TEST) {
 		const reportDiv = document.getElementById('test-report');
@@ -100,6 +106,7 @@ TEST RUNNER DE AJEDREZ
 Estado: ${estadoTest}
     Partidas Jugadas: ${contadorPartidas} / ${NUM_PARTIDAS_TEST}
     Movimientos (partida actual): ${tablero ? tablero.movimientos.length : 0}
+    Tiempo Minimax (último mov): ${lastMinimaxTime} ms
 
 --- Marcador ---
 Blancas: ${victoriasBlancas}
@@ -121,8 +128,14 @@ ${logErrores.length > 0 ? 'Detalles de Errores:\n' + errorDetails : ''}
 		
 	}
 
-	tablero.dibujaBarraValor(tablero);
+	tablero.dibujaBarrasDeValor(tablero);
 	tablero.dibujaMensaje(tablero);
+    
+    // Display Minimax time outside of test mode
+    if (!MODO_TEST && lastMinimaxTime > 0) {
+        fill(255);
+        text(`Tiempo Minimax: ${lastMinimaxTime} ms`, 10, height - 20);
+    }
 
 	//tablero.dibujaMovimientoPosible();
 
@@ -193,7 +206,7 @@ function mouseDragged() {
 	
 }
 
-function touchEnded() {
+async function touchEnded() {
 	// 1. Si no hay una pieza seleccionada, no hacer nada.
 	if (tablero.posSel[0] === -1) {
 		return;
@@ -224,17 +237,21 @@ function touchEnded() {
 	// 5. Si es el turno de la IA, ejecutar su lógica.
 	if (tablero.jaqueMate === 0 && tablero.tablas === 0 && tablero.turno < 0 && tablero.auto_n) {
 		if (tablero.movimientos.length < 3) {
-			tablero.moverRandom();
+			pensamientoMoverRandom(tablero);
 			tablero.actualizarEstadoJuego();
 		} else {
 			// Usa el método clonar para que la IA piense en un estado limpio.
-			let juegoTmp = tablero.clonar();
-			let mov = juegoTmp.moverMejorValor(juegoTmp);
-			tablero.tablas = juegoTmp.tablas;
-			tablero.jaqueMate = juegoTmp.jaqueMate;
+			const startTime = performance.now();
+			// Await the promise returned by the new async Minimax function
+			let mov = await tablero.fPensamientoNegras(tablero, 2);
+            const endTime = performance.now();
+            lastMinimaxTime = (endTime - startTime).toFixed(2);
+			
+			// El estado de jaqueMate/tablas se actualiza dentro de la función de pensamiento si no hay movimientos.
+			// No es necesario copiarlo desde un juego temporal.
 
 			// Traduce la pieza de la simulación a la pieza real del tablero principal.
-			if (mov[0]) {
+			if (mov && mov[0]) {
 				const piezaOrigenPos = mov[0].pos;
 				const piezaReal = tablero.piezas.find(p => p.pos[0] === piezaOrigenPos[0] && p.pos[1] === piezaOrigenPos[1]);
 				
@@ -284,7 +301,7 @@ function mueveRandom()
 
 function moveAuto()
 {
-	sleep(50).then(function() { // Reducido el delay para acelerar las pruebas
+	sleep(50).then(async function() { // Make the callback async
 		if(logErrores.length > 0){
 			return ; // Si ya hay errores, no continuar
 		}
@@ -313,9 +330,13 @@ function moveAuto()
 				[-4,-2,-3,-5,-6,-3,-2,-4], [-1,-1,-1,-1,-1,-1,-1,-1], [0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0],
 				[0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0], [1,1,1,1,1,1,1,1], [4,2,3,5,6,3,2,4]
 			]);
-			// Re-asigna las funciones de evaluación al nuevo objeto de juego
+			// Re-asigna las funciones de evaluación al nuevo objeto de juego para la prueba A/B
 			tablero.fdeNegras = BIBLIOTECA_EVALUACION.con_estado_buggy;
-			tablero.fdeBlancas = BIBLIOTECA_EVALUACION.con_estado_buggy;
+			tablero.fdeBlancas = BIBLIOTECA_EVALUACION.mejorada_con_centro;
+            // Re-asigna las funciones de pensamiento al nuevo objeto de juego
+            tablero.fPensamientoNegras = pensamientoMoverConMinimax; // Default thinking for black
+            tablero.fPensamientoBlancas = pensamientoMoverMejorValor; // Default thinking for white
+
 			tablero.cargaPiezas(img);
 			moveAuto(); // Inicia la siguiente partida
 			return; 
@@ -323,35 +344,47 @@ function moveAuto()
 
 		// --- Lógica de Selección de Movimiento (Aleatorio vs. IA) ---
 		let moveResult = 0;
+		let mov = null;
+
 		// Para las primeras 2 jugadas de cada bando (total 4), usa movimientos aleatorios para dar variedad.
 		if (tablero.movimientos.length < 4) { 
-			moveResult = tablero.moverRandom();
+			moveResult = pensamientoMoverRandom(tablero); // Call the thinking function
 			if (moveResult > 0) {
 				tablero.actualizarEstadoJuego();
 			}
-		} else { // Después, usa la IA inteligente
-			let juegoTmp = tablero.clonar();
-			let mov = juegoTmp.moverMejorValor(juegoTmp);
-			tablero.tablas = juegoTmp.tablas;
-			tablero.jaqueMate = juegoTmp.jaqueMate;
+		} else { // Después, usa la IA inteligente asignada
+            const startTime = performance.now();
+            if (tablero.turno > 0) { // Turno de las blancas
+                // Await even for non-async functions for consistency, it won't break.
+                mov = await tablero.fPensamientoBlancas(tablero); 
+            } else { // Turno de las negras
+                mov = await tablero.fPensamientoNegras(tablero, 2); 
+            }
+            const endTime = performance.now();
+            lastMinimaxTime = (endTime - startTime).toFixed(2);
 
-			if (tablero.jaqueMate > 0 || tablero.tablas > 0) {
-				moveResult = 1; 
-			} else if (mov[0]) {
-				const piezaOrigenPos = mov[0].pos;
-				const piezaReal = tablero.piezas.find(p => p.pos[0] === piezaOrigenPos[0] && p.pos[1] === piezaOrigenPos[1]);
-				
-				if (piezaReal) {
-					moveResult = tablero.mover(piezaReal, mov[1]);
-					if (moveResult > 0) {
-						tablero.actualizarEstadoJuego();
-					}
-				} else {
-					moveResult = -1;
-				}
-			} else {
-				moveResult = -1; 
-			}
+            if (mov && mov[0]) { // Si la función de pensamiento devolvió un movimiento
+                const piezaOrigenPos = mov[0].pos;
+                const piezaReal = tablero.piezas.find(p => p.pos[0] === piezaOrigenPos[0] && p.pos[1] === piezaOrigenPos[1]);
+                
+                if (piezaReal) {
+                    moveResult = tablero.mover(piezaReal, mov[1]);
+                    if (moveResult > 0) {
+                        tablero.actualizarEstadoJuego();
+                    }
+                } else {
+                    moveResult = -1; // No se encontró la pieza real
+                }
+            } else {
+                // Si la función de pensamiento no devolvió un movimiento, es jaque mate/tablas.
+                // La función de pensamiento ya actualiza el estado del juego (jaqueMate/tablas).
+                if (tablero.jaqueMate > 0 || tablero.tablas > 0) {
+                    moveResult = 1; // Considera esto un "éxito" para que no se marque como error.
+                } else {
+                    // Esto sería un error inesperado si la IA no devuelve movimiento y el juego no ha terminado.
+                    moveResult = -1; 
+                }
+            }
 		}
 
 		// --- Manejo de Errores de Movimiento ---
@@ -404,6 +437,7 @@ window.mouseDragged = mouseDragged;
 window.touchEnded = touchEnded;
 window.mouseWheel = mouseWheel;
 window.keyTyped = keyTyped;
+window.cargaFen = cargaFen;
 
 
 
