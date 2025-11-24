@@ -55,3 +55,14 @@ Continuando con la experimentación, se han introducido mejoras significativas t
 - **Detección de Jaque Mate:** Se corrigió un error fundamental en la lógica de la IA que le impedía reconocer un jaque mate. El problema radicaba en que el generador de movimientos no validaba si una jugada dejaba al propio rey en jaque, lo que hacía que la IA eligiera movimientos ilegales en situaciones de mate. La nueva implementación filtra estos movimientos y ahora detecta correctamente el final de la partida.
 - **Robustez del Test Runner:** Se solucionaron varios errores de `TypeError` que detenían las pruebas automáticas. Estos fallos se debían a desincronizaciones entre la matriz del tablero y la lista de objetos de piezas durante la simulación. Se han añadido salvaguardas para hacer el sistema más robusto.
 
+---
+### Mejoras de Interfaz y Parametrización de IA (Nov 2025)
+
+Para mejorar la flexibilidad durante el juego manual y la experimentación, se han añadido las siguientes mejoras en la interfaz de usuario:
+
+- **Flexibilidad en Modo Manual:** Ahora es posible seleccionar la función de `pensamiento` y `evaluación` para la IA de las piezas negras directamente desde la interfaz del modo manual. Esto permite enfrentar a un jugador humano contra diferentes configuraciones de IA sin necesidad de cambiar al modo automático.
+
+- **Parametrización de la Profundidad de Búsqueda:** Se ha añadido un campo numérico para ajustar la `profundidad` del algoritmo Minimax. Este control está disponible tanto en el modo automático (para ambas IAs) como en el modo manual (para la IA negra).
+
+- **Visibilidad Condicional de Controles:** Para mantener la interfaz limpia y relevante, el campo para ajustar la profundidad de búsqueda solo es visible cuando se selecciona un algoritmo de `pensamiento` que lo utiliza (como "Minimax Paralelo").
+
