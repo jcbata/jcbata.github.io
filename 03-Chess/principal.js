@@ -77,11 +77,11 @@ function setup() {
     populateSelect(uiElements.blackEvalManualSelect, BIBLIOTECA_EVALUACION);
 
     uiElements.whiteThoughtSelect.value = 'Minimax Paralelo';
-    uiElements.whiteEvalSelect.value = 'mejorada_con_centro';
+    uiElements.whiteEvalSelect.value = 'Posicional (Nuevo)';
     uiElements.blackThoughtSelect.value = 'Minimax Paralelo';
-    uiElements.blackEvalSelect.value = 'con_estado_buggy';
+    uiElements.blackEvalSelect.value = 'Posicional (Nuevo)';
     uiElements.blackThoughtManualSelect.value = 'Minimax Paralelo';
-    uiElements.blackEvalManualSelect.value = 'con_estado_buggy';
+    uiElements.blackEvalManualSelect.value = 'Posicional (Nuevo)';
 
     function toggleDepthInput(thoughtSelect, depthInput) {
         if (thoughtSelect.value === 'Minimax Paralelo') {
@@ -93,10 +93,33 @@ function setup() {
         }
     }
 
-    uiElements.whiteThoughtSelect.addEventListener('change', () => toggleDepthInput(uiElements.whiteThoughtSelect, uiElements.whiteDepthInput));
-    uiElements.blackThoughtSelect.addEventListener('change', () => toggleDepthInput(uiElements.blackThoughtSelect, uiElements.blackDepthInput));
-    uiElements.blackThoughtManualSelect.addEventListener('change', () => toggleDepthInput(uiElements.blackThoughtManualSelect, uiElements.blackDepthManualInput));
+    // --- Event Listeners for AI Configuration ---
+    // When the user changes the thinking/evaluation function, update the tablero object directly.
+    uiElements.whiteThoughtSelect.addEventListener('change', (e) => {
+        if(tablero) tablero.fPensamientoBlancas = BIBLIOTECA_PENSAMIENTO[e.target.value];
+        toggleDepthInput(uiElements.whiteThoughtSelect, uiElements.whiteDepthInput);
+    });
+    uiElements.whiteEvalSelect.addEventListener('change', (e) => {
+        if(tablero) tablero.fdeBlancas = BIBLIOTECA_EVALUACION[e.target.value];
+    });
 
+    uiElements.blackThoughtSelect.addEventListener('change', (e) => {
+        if(tablero) tablero.fPensamientoNegras = BIBLIOTECA_PENSAMIENTO[e.target.value];
+        toggleDepthInput(uiElements.blackThoughtSelect, uiElements.blackDepthInput);
+    });
+    uiElements.blackEvalSelect.addEventListener('change', (e) => {
+        if(tablero) tablero.fdeNegras = BIBLIOTECA_EVALUACION[e.target.value];
+    });
+
+    uiElements.blackThoughtManualSelect.addEventListener('change', (e) => {
+        if(tablero) tablero.fPensamientoNegras = BIBLIOTECA_PENSAMIENTO[e.target.value];
+        toggleDepthInput(uiElements.blackThoughtManualSelect, uiElements.blackDepthManualInput);
+    });
+    uiElements.blackEvalManualSelect.addEventListener('change', (e) => {
+        if(tablero) tablero.fdeNegras = BIBLIOTECA_EVALUACION[e.target.value];
+    });
+
+    // --- Initial Toggle on page load ---
     toggleDepthInput(uiElements.whiteThoughtSelect, uiElements.whiteDepthInput);
     toggleDepthInput(uiElements.blackThoughtSelect, uiElements.blackDepthInput);
     toggleDepthInput(uiElements.blackThoughtManualSelect, uiElements.blackDepthManualInput);
@@ -210,6 +233,11 @@ function windowResized() {
     resizeCanvas(size, size);
     if (tablero) {
         tablero.tam = size / 10;
+        // Update the size and coordinates of each piece
+        for (const pieza of tablero.piezas) {
+            pieza.piezaSize = tablero.tam;
+            pieza.coord = [pieza.pos[0] * tablero.tam, pieza.pos[1] * tablero.tam];
+        }
     }
 }
 
@@ -243,7 +271,7 @@ ${logErrores.length > 0 ? errorDetails : ''}
     }
 
 	clear();
-	tablero.dibujar([255,200,12,255]);
+	tablero.dibujar();
 	for(let z=0;z<tablero.piezas.length;z++){
 		tablero.piezas[z].dibujar(0);
 	}
@@ -303,7 +331,7 @@ async function touchEnded() {
 		const posDestino = tablero.fCoordMouse(mouseX, mouseY);
 		if (tablero.tablero[0].length * tablero.tam >= mouseX && tablero.tablero.length * tablero.tam >= mouseY) {
 			if (tablero.mover(piezaSeleccionada, posDestino) > 0) {
-				tablero.actualizarEstadoJuego();
+				// success, actualizarEstadoJuego is called inside mover
 			}
 		}
 	}
@@ -312,12 +340,13 @@ async function touchEnded() {
 	tablero.piezaSel = [-1,-1];
 	for (const p of tablero.piezas) { p.coord = [p.pos[0] * tablero.tam, p.pos[1] * tablero.tam]; }
 
-	if (gameMode === 'manual' && tablero.jaqueMate === 0 && tablero.tablas === 0 && tablero.turno < 0 && tablero.auto_n) {
+	if (gameMode === 'manual' && tablero.jaqueMate === 0 && tablero.tablas === 0 && tablero.estado.turno < 0 && tablero.auto_n) {
 		const startTime = performance.now();
         let mov = null;
         if(typeof tablero.fPensamientoNegras === 'function') {
             const depth = parseInt(document.getElementById('black-depth-manual').value, 10);
-		    mov = await tablero.fPensamientoNegras(tablero, depth);
+            const evalFuncName = document.getElementById('black-eval-manual').value;
+		    mov = await tablero.fPensamientoNegras(tablero.estado, depth, evalFuncName);
         }
         const endTime = performance.now();
         lastMinimaxTime = (endTime - startTime).toFixed(2);
@@ -325,7 +354,7 @@ async function touchEnded() {
 		if (mov && mov[0]) {
 			const piezaReal = tablero.piezas.find(p => p.pos[0] === mov[0].pos[0] && p.pos[1] === mov[0].pos[1]);
 			if (piezaReal && tablero.mover(piezaReal, mov[1]) > 0) {
-				tablero.actualizarEstadoJuego();
+				// success, actualizarEstadoJuego is called inside mover
 			} else {
 				console.error("La IA (Negras) eligió un movimiento ilegal o no se encontró la pieza:", mov);
 			}
@@ -373,18 +402,26 @@ function moveAuto() {
         const startTime = performance.now();
 
 		if (tablero.movimientos.length < 4) { 
-			moveResult = pensamientoMoverRandom(tablero);
-			if (moveResult > 0) tablero.actualizarEstadoJuego();
+			// For the first few moves, use a simpler random mover
+			const mov = pensamientoMoverRandom(tablero.estado);
+			if(mov && mov[0]){
+				const piezaReal = tablero.piezas.find(p => p.pos[0] === mov[0].pos[0] && p.pos[1] === mov[0].pos[1]);
+				if (piezaReal) {
+					moveResult = tablero.mover(piezaReal, mov[1]);
+				}
+			}
 		} else {
-            if (tablero.turno > 0) {
+            if (tablero.estado.turno > 0) {
                 if(typeof tablero.fPensamientoBlancas === 'function') {
                     const depth = parseInt(document.getElementById('white-depth').value, 10);
-                    mov = await tablero.fPensamientoBlancas(tablero, depth); 
+                    const evalFuncName = document.getElementById('white-eval').value;
+                    mov = await tablero.fPensamientoBlancas(tablero.estado, depth, evalFuncName); 
                 }
             } else {
                 if(typeof tablero.fPensamientoNegras === 'function') {
                     const depth = parseInt(document.getElementById('black-depth').value, 10);
-                    mov = await tablero.fPensamientoNegras(tablero, depth); 
+                    const evalFuncName = document.getElementById('black-eval').value;
+                    mov = await tablero.fPensamientoNegras(tablero.estado, depth, evalFuncName); 
                 }
             }
             
