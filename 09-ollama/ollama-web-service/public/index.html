@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ollama Web UI</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <!-- Custom CSS -->
+    <style>
+        body { font-family: sans-serif; background-color: #f8f9fa; color: #343a40; }
+        .container-fluid { padding: 20px; }
+        .card { border-radius: 0.5rem; box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075); }
+        .tab-content { padding-top: 1rem; }
+        .info-icon {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background-color: #0d6efd; /* Bootstrap primary blue */
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            text-align: center;
+            line-height: 18px;
+            cursor: help;
+            margin-left: 5px;
+            vertical-align: middle;
+        }
+
+        /* Chat specific styles */
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 70vh; /* Adjust as needed */
+            border: 1px solid #dee2e6;
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+        .chat-history {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 15px;
+            background-color: #e9ecef;
+        }
+        .chat-input-area {
+            padding: 15px;
+            border-top: 1px solid #dee2e6;
+            background-color: #f8f9fa;
+            display: flex;
+        }
+        .chat-message {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 0.75rem;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        .chat-message.user {
+            background-color: #0d6efd;
+            color: white;
+            align-self: flex-end;
+            margin-left: auto;
+            border-bottom-right-radius: 0;
+        }
+        .chat-message.assistant {
+            background-color: #6c757d;
+            color: white;
+            align-self: flex-start;
+            margin-right: auto;
+            border-bottom-left-radius: 0;
+        }
+        .chat-message.thinking {
+            background-color: #ffc107; /* Bootstrap warning yellow */
+            color: #343a40;
+            align-self: flex-start;
+            margin-right: auto;
+            font-style: italic;
+            font-size: 0.9em;
+            border-bottom-left-radius: 0;
+        }
+        .chat-history-messages {
+            display: flex;
+            flex-direction: column;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid mt-3">
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-10 col-lg-8">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h1 class="h4 mb-0">Ollama Web UI</h1>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="modelSelect" class="form-label">Select Model:</label>
+                            <div class="input-group">
+                                <select id="modelSelect" class="form-select">
+                                    <option value="">Loading models...</option>
+                                </select>
+                                <button class="btn btn-outline-secondary" type="button" onclick="loadModels()">Refresh Models</button>
+                            </div>
+                        </div>
+
+                        <ul class="nav nav-tabs" id="myTab" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="chat-tab" data-bs-toggle="tab" data-bs-target="#chat" type="button" role="tab" aria-controls="chat" aria-selected="true">Chat</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="generate-tab" data-bs-toggle="tab" data-bs-target="#generate" type="button" role="tab" aria-controls="generate" aria-selected="false">Generate Text</button>
+                            </li>
+                        </ul>
+                        <div class="tab-content" id="myTabContent">
+                            <div class="tab-pane fade show active" id="chat" role="tabpanel" aria-labelledby="chat-tab">
+                                <h2 class="h5 mt-3">Chat
+                                    <span class="info-icon" title="Use this for multi-turn conversations. The model remembers previous messages in the chat history.">i</span>
+                                </h2>
+                                <div class="chat-container">
+                                    <div class="chat-history" id="chatHistory">
+                                        <div class="chat-history-messages">
+                                            <!-- Chat messages will be appended here -->
+                                        </div>
+                                    </div>
+                                    <div class="chat-input-area">
+                                        <textarea id="chatPrompt" class="form-control me-2" placeholder="Enter your chat message here..." rows="1"></textarea>
+                                        <button class="btn btn-primary" type="button" onclick="sendChatMessage()">Send</button>
+                                        <div id="chatLoading" class="spinner-border text-primary ms-2" role="status" style="display:none;">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    <div class="mb-3 form-check">
+                                        <input type="checkbox" class="form-check-input" id="chatThink">
+                                        <label class="form-check-label" for="chatThink">Enable Thinking
+                                            <span class="info-icon" title="For 'thinking models', enables an internal thinking step before generating a response.">i</span>
+                                        </label>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="chatTemperature" class="form-label">Temperature
+                                                <span class="info-icon" title="Controls the randomness of the output. Higher values (e.g., 0.8) make the model more creative.">i</span>
+                                            </label>
+                                            <input type="number" class="form-control" id="chatTemperature" value="0.8" step="0.1" min="0" max="2">
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="chatNumPredict" class="form-label">Max Tokens
+                                                <span class="info-icon" title="Maximum number of tokens to predict. (Set to -1 for unlimited).">i</span>
+                                            </label>
+                                            <input type="number" class="form-control" id="chatNumPredict" value="512" min="-1">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="generate" role="tabpanel" aria-labelledby="generate-tab">
+                                <h2 class="h5 mt-3">Generate Text
+                                    <span class="info-icon" title="Use this for single-turn text generation. The model generates a response based solely on the current prompt, without remembering past interactions.">i</span>
+                                </h2>
+                                <div class="mb-3">
+                                    <label for="generatePrompt" class="form-label">Prompt:</label>
+                                    <textarea id="generatePrompt" class="form-control" placeholder="Enter your prompt here..." rows="5"></textarea>
+                                </div>
+                                <div class="mb-3 form-check">
+                                    <input type="checkbox" class="form-check-input" id="generateThink">
+                                    <label class="form-check-label" for="generateThink">Enable Thinking
+                                        <span class="info-icon" title="For 'thinking models', enables an internal thinking step before generating a response.">i</span>
+                                    </label>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="generateTemperature" class="form-label">Temperature
+                                            <span class="info-icon" title="Controls the randomness of the output. Higher values (e.g., 0.8) make the model more creative.">i</span>
+                                        </label>
+                                        <input type="number" class="form-control" id="generateTemperature" value="0.8" step="0.1" min="0" max="2">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="generateNumPredict" class="form-label">Max Tokens
+                                            <span class="info-icon" title="Maximum number of tokens to predict. (Set to -1 for unlimited).">i</span>
+                                            </label>
+                                        <input type="number" class="form-control" id="generateNumPredict" value="512" min="-1">
+                                    </div>
+                                </div>
+                                <button class="btn btn-primary" type="button" onclick="generateText()">Generate</button>
+                                <div id="generateLoading" class="spinner-border text-primary ms-2" role="status" style="display:none;">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h2 class="h5 mt-4">Response:</h2>
+                        <pre id="response" class="p-3 bg-light border rounded"></pre>
+                        <div id="responseLoading" class="text-center mt-3" style="display:none;">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2">Model is thinking...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script>
+        const modelSelect = document.getElementById('modelSelect');
+        const generatePrompt = document.getElementById('generatePrompt');
+        const generateThink = document.getElementById('generateThink');
+        const generateTemperature = document.getElementById('generateTemperature');
+        const generateNumPredict = document.getElementById('generateNumPredict');
+        const generateLoading = document.getElementById('generateLoading');
+
+        const chatPrompt = document.getElementById('chatPrompt');
+        const chatThink = document.getElementById('chatThink');
+        const chatTemperature = document.getElementById('chatTemperature');
+        const chatNumPredict = document.getElementById('chatNumPredict');
+        const chatLoading = document.getElementById('chatLoading');
+
+        const responseDiv = document.getElementById('response');
+        const responseLoading = document.getElementById('responseLoading');
+        const chatHistoryDiv = document.getElementById('chatHistory').querySelector('.chat-history-messages');
+
+        async function loadModels() {
+            responseDiv.textContent = 'Loading models...';
+            try {
+                const res = await fetch('/api/ollama/models');
+                if (!res.ok) {
+                    throw new Error(`HTTP error! status: ${res.status}`);
+                }
+                const data = await res.json();
+                modelSelect.innerHTML = ''; // Clear existing options
+                if (data.models && data.models.length > 0) {
+                    data.models.forEach(model => {
+                        const option = document.createElement('option');
+                        option.value = model.name;
+                        option.textContent = model.name;
+                        modelSelect.appendChild(option);
+                    });
+                    responseDiv.textContent = 'Models loaded successfully.';
+                } else {
+                    modelSelect.innerHTML = '<option value="">No models found</option>';
+                    responseDiv.textContent = 'No models found. Please pull a model using `ollama pull <model_name>`';
+                }
+            } catch (error) {
+                console.error('Error loading models:', error);
+                responseDiv.textContent = `Error loading models: ${error.message}. Ensure Ollama is running and models are pulled.`;
+                responseDiv.classList.add('text-danger'); // Bootstrap class for error text
+            }
+        }
+
+        function appendChatMessage(role, content) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('chat-message', role);
+            messageElement.textContent = content;
+            chatHistoryDiv.appendChild(messageElement);
+            chatHistoryDiv.scrollTop = chatHistoryDiv.scrollHeight; // Scroll to bottom
+        }
+
+        async function streamResponse(url, payload, isChat = false) {
+            // Show loading indicators
+            if (isChat) {
+                chatLoading.style.display = 'inline-block';
+            } else {
+                generateLoading.style.display = 'inline-block';
+            }
+            responseLoading.style.display = 'block';
+            if (!isChat) { // Only clear responseDiv for generate tab
+                responseDiv.textContent = '';
+                responseDiv.classList.remove('text-danger');
+            }
+
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload),
+                });
+
+                if (!res.ok) {
+                    const errorText = await res.text();
+                    throw new Error(`HTTP error! status: ${res.status} - ${errorText}`);
+                }
+
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder('utf-8');
+                let buffer = '';
+                let assistantResponseContent = '';
+                let thinkingMessageElement = null; // To keep track of the thinking message
+
+                // Hide responseLoading once streaming starts
+                responseLoading.style.display = 'none';
+
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop(); // Keep the last incomplete line in buffer
+
+                    for (const line of lines) {
+                        if (line.trim() === '') continue;
+                        try {
+                            const json = JSON.parse(line);
+
+                            if (isChat) {
+                                if (json.message) {
+                                    if (json.message.thinking && chatThink.checked) {
+                                        // Find or create a 'thinking' message element
+                                        if (!thinkingMessageElement) {
+                                            thinkingMessageElement = document.createElement('div');
+                                            thinkingMessageElement.classList.add('chat-message', 'thinking');
+                                            chatHistoryDiv.appendChild(thinkingMessageElement);
+                                        }
+                                        // Concatenate thinking content
+                                        thinkingMessageElement.textContent += json.message.thinking;
+                                        chatHistoryDiv.scrollTop = chatHistoryDiv.scrollHeight;
+                                    }
+
+                                    if (json.message.content) {
+                                        // If thinking message is present, it means thinking is likely done for this segment.
+                                        // We can finalize its appearance or remove it.
+                                        if (thinkingMessageElement && thinkingMessageElement.parentNode) {
+                                            // Make it less prominent
+                                            thinkingMessageElement.classList.remove('thinking');
+                                            thinkingMessageElement.classList.add('text-muted', 'thinking-done'); // Add a 'thinking-done' class for specific styling
+                                            thinkingMessageElement = null; // Reset to create a new one if thinking starts again
+                                        }
+
+                                        assistantResponseContent += json.message.content;
+                                        // Update the last message element (which should be the assistant's response)
+                                        let assistantMessageElement = chatHistoryDiv.lastChild;
+                                        if (!assistantMessageElement || (!assistantMessageElement.classList.contains('assistant') && !assistantMessageElement.classList.contains('thinking-done'))) {
+                                            // If the last child is not an assistant message, or it's a thinking message that's now done, create a new assistant message
+                                            assistantMessageElement = document.createElement('div');
+                                            assistantMessageElement.classList.add('chat-message', 'assistant');
+                                            chatHistoryDiv.appendChild(assistantMessageElement);
+                                        } else if (assistantMessageElement.classList.contains('thinking-done')) {
+                                            // If the last child is the finalized thinking message, we need to append the assistant message after it
+                                            assistantMessageElement = document.createElement('div');
+                                            assistantMessageElement.classList.add('chat-message', 'assistant');
+                                            chatHistoryDiv.appendChild(assistantMessageElement);
+                                        }
+                                        
+                                        assistantMessageElement.textContent = assistantResponseContent;
+                                        chatHistoryDiv.scrollTop = chatHistoryDiv.scrollHeight;
+                                    }
+                                }
+                            } else { // Generate
+                                if (json.response) {
+                                    responseDiv.textContent += json.response;
+                                } else if (json.message && json.message.content) { // Fallback for chat-like response in generate
+                                    responseDiv.textContent += json.message.content;
+                                }
+                            }
+                        } catch (e) {
+                            console.warn('Could not parse JSON line:', line, e);
+                        }
+                    }
+                }
+                if (buffer.trim() !== '') { // Process any remaining buffer
+                    try {
+                        const json = JSON.parse(buffer);
+                        if (isChat) {
+                            if (json.message) {
+                                if (json.message.thinking && chatThink.checked) {
+                                    if (!thinkingMessageElement) {
+                                        thinkingMessageElement = document.createElement('div');
+                                        thinkingMessageElement.classList.add('chat-message', 'thinking');
+                                        chatHistoryDiv.appendChild(thinkingMessageElement);
+                                    }
+                                    thinkingMessageElement.textContent += json.message.thinking;
+                                    chatHistoryDiv.scrollTop = chatHistoryDiv.scrollHeight;
+                                }
+                                if (json.message.content) {
+                                    if (thinkingMessageElement && thinkingMessageElement.parentNode) {
+                                        thinkingMessageElement.classList.remove('thinking');
+                                        thinkingMessageElement.classList.add('text-muted', 'thinking-done');
+                                        thinkingMessageElement = null;
+                                    }
+                                    assistantResponseContent += json.message.content;
+                                    let assistantMessageElement = chatHistoryDiv.lastChild;
+                                    if (!assistantMessageElement || (!assistantMessageElement.classList.contains('assistant') && !assistantMessageElement.classList.contains('thinking-done'))) {
+                                        assistantMessageElement = document.createElement('div');
+                                        assistantMessageElement.classList.add('chat-message', 'assistant');
+                                        chatHistoryDiv.appendChild(assistantMessageElement);
+                                    } else if (assistantMessageElement.classList.contains('thinking-done')) {
+                                        assistantMessageElement = document.createElement('div');
+                                        assistantMessageElement.classList.add('chat-message', 'assistant');
+                                        chatHistoryDiv.appendChild(assistantMessageElement);
+                                    }
+                                    assistantMessageElement.textContent = assistantResponseContent;
+                                    chatHistoryDiv.scrollTop = chatHistoryDiv.scrollHeight;
+                                }
+                            }
+                        } else {
+                            if (json.response) {
+                                responseDiv.textContent += json.response;
+                            } else if (json.message && json.message.content) {
+                                responseDiv.textContent += json.message.content;
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('Could not parse final JSON buffer:', buffer, e);
+                    }
+                }
+
+                if (isChat && assistantResponseContent) {
+                    chatMessages.push({ role: 'assistant', content: assistantResponseContent });
+                }
+
+            } catch (error) {
+                console.error('Error streaming response:', error);
+                if (isChat) {
+                    appendChatMessage('assistant', `Error: ${error.message}`);
+                } else {
+                    responseDiv.textContent = `Error: ${error.message}`;
+                    responseDiv.classList.add('text-danger');
+                }
+            } finally {
+                // Always hide loading indicators
+                chatLoading.style.display = 'none';
+                generateLoading.style.display = 'none';
+                responseLoading.style.display = 'none';
+                // Final cleanup for thinking message if it was never followed by content
+                const orphanedThinkingElement = chatHistoryDiv.querySelector('.chat-message.thinking');
+                if (orphanedThinkingElement && orphanedThinkingElement.parentNode) {
+                    orphanedThinkingElement.parentNode.removeChild(orphanedThinkingElement);
+                }
+            }
+        }
+
+        async function generateText() {
+            const model = modelSelect.value;
+            const prompt = generatePrompt.value;
+            const think = generateThink.checked;
+            const temperature = parseFloat(generateTemperature.value);
+            const numPredict = parseInt(generateNumPredict.value);
+
+            if (!model) {
+                responseDiv.textContent = 'Please select a model.';
+                responseDiv.classList.add('text-danger');
+                return;
+            }
+            if (!prompt) {
+                responseDiv.textContent = 'Please enter a prompt for generation.';
+                responseDiv.classList.add('text-danger');
+                return;
+            }
+
+            const payload = {
+                model,
+                prompt,
+                stream: true,
+                think: think, // Add the think parameter
+                options: { // Add options object
+                    temperature: temperature,
+                    num_predict: numPredict
+                }
+            };
+            await streamResponse('/api/ollama/generate', payload, false);
+        }
+
+        let chatMessages = []; // To maintain chat history
+
+        async function sendChatMessage() {
+            const model = modelSelect.value;
+            const messageContent = chatPrompt.value.trim();
+            const think = chatThink.checked;
+            const temperature = parseFloat(chatTemperature.value);
+            const numPredict = parseInt(chatNumPredict.value);
+
+            if (!model) {
+                responseDiv.textContent = 'Please select a model.';
+                responseDiv.classList.add('text-danger');
+                return;
+            }
+            if (!messageContent) {
+                return; // Do nothing if chat message is empty
+            }
+
+            // Add user message to history and display it
+            chatMessages.push({ role: 'user', content: messageContent });
+            appendChatMessage('user', messageContent);
+            chatPrompt.value = ''; // Clear input
+
+            // Add a temporary assistant message to be updated by stream
+            // This will be replaced by the actual assistant response
+            // appendChatMessage('assistant', '...');
+
+            const payload = {
+                model,
+                messages: chatMessages,
+                stream: true,
+                think: think, // Add the think parameter
+                options: { // Add options object
+                    temperature: temperature,
+                    num_predict: numPredict
+                }
+            };
+
+            await streamResponse('/api/ollama/chat', payload, true);
+        }
+
+
+        // Initial load of models and set default tab when the page loads
+        window.onload = () => {
+            loadModels();
+            // Activate the chat tab by default using Bootstrap's JS
+            const chatTab = new bootstrap.Tab(document.getElementById('chat-tab'));
+            chatTab.show();
+        };
+    </script>
+</body>
+</html>
