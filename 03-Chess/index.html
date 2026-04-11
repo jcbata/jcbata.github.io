@@ -1,62 +1,187 @@
 <!DOCTYPE html>
-<html lang="es" data-theme="dark">
+<html lang="es" data-theme="light">
     <head>
         <title>Chess AI Arena</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <script src="https://cdn.jsdelivr.net/npm/p5@1.9.2/lib/p5.js"></script>
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+        <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
         <style>
             :root {
-                font-size: 20px;
+                /* Modern Color Palette */
+                --primary: #4CAF50; /* Green */
+                --primary-hover: #43A047;
+                --secondary: #2196F3; /* Blue */
+                --secondary-hover: #1976D2;
+                --accent: #FFC107; /* Amber */
+                --background-color: #121212; /* Dark background */
+                --card-background-color: #1E1E1E; /* Slightly lighter card background */
+                --card-border-color: #333333;
+                --text-color: #E0E0E0; /* Light text */
+                --text-color-secondary: #B0B0B0; /* Lighter text */
+                --canvas-background-color: black; /* Default for dark mode */
+
+                font-size: 18px; /* Slightly smaller base font for more content */
+                font-family: 'Roboto', sans-serif;
+            }
+            :root[data-theme="light"] {
+                --primary: #28a745; /* A nice green for light mode */
+                --primary-hover: #218838;
+                --secondary: #007bff; /* A nice blue for light mode */
+                --secondary-hover: #0069d9;
+                --accent: #ffc107; /* Amber, works well in light mode */
+                --background-color: #f8f9fa; /* Light background */
+                --card-background-color: #ffffff; /* White card background */
+                --card-border-color: #dee2e6; /* Light grey border */
+                --text-color: #212529; /* Dark text for readability */
+                --text-color-secondary: #6c757d; /* Muted dark text */
+                --canvas-background-color: transparent; /* Transparent canvas background */
             }
             body {
                 margin: 0;
                 padding: 1rem;
                 background-color: var(--background-color);
+                color: var(--text-color);
             }
             .bento-grid {
                 display: grid;
-                grid-template-columns: 1fr 1fr 1fr 1fr;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* Flexible columns */
                 grid-template-rows: auto;
                 gap: 1rem;
-                height: calc(100vh - 2rem);
+                min-height: calc(100vh - 2rem); /* Use min-height for flexibility */
+                align-items: start; /* Align items to the start of their grid area */
             }
             .bento-item {
                 background-color: var(--card-background-color);
                 border: 1px solid var(--card-border-color);
-                border-radius: var(--card-border-radius);
+                border-radius: var(--border-radius);
                 padding: 1rem;
                 overflow: auto;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Subtle shadow */
             }
             #canvas-container {
-                grid-column: 1 / span 3;
-                grid-row: 1 / span 2;
+                grid-column: 1 / span 2; /* Occupy 2 columns by default */
+                grid-row: 1 / span 2; /* Occupy 2 rows by default */
                 display: flex;
+                justify-content: flex-start; /* Align to top-left */
+                align-items: flex-start; /* Align to top-left */
                 padding: 0;
+                background-color: var(--canvas-background-color); /* Use variable */
+                border-radius: var(--border-radius);
+                overflow: hidden; /* Ensure canvas corners are rounded */
+                min-height: 300px; /* Ensure it's always visible */
+            }
+            #canvas-container canvas {
+                display: block; /* Remove extra space below canvas */
+                max-width: 100%;
+                height: auto;
             }
             #controls-container {
-                grid-column: 4 / span 1;
+                grid-column: 3 / span 1;
                 grid-row: 1 / span 1;
             }
             #report-container {
-                grid-column: 4 / span 1;
+                grid-column: 3 / span 1;
                 grid-row: 2 / span 1;
             }
             #fen-container {
-                grid-column: 1 / span 3;
+                grid-column: 1 / span 3; /* Span across all available columns at the bottom */
                 grid-row: 3 / span 1;
             }
+
             /* Responsive layout for smaller screens */
-            @media (max-width: 768px) {
+            @media (max-width: 1024px) { /* Tablets and smaller desktops */
                 .bento-grid {
-                    display: flex;
-                    flex-direction: column;
-                    height: auto;
+                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
                 }
                 #canvas-container {
-                    min-height: 60vh;
-                    order: -1; /* Mueve el canvas arriba en móvil */
+                    grid-column: 1 / span all; /* Full width */
+                    grid-row: auto;
                 }
+                #controls-container, #report-container, #fen-container {
+                    grid-column: 1 / span all; /* Full width */
+                    grid-row: auto;
+                }
+            }
+
+            @media (max-width: 768px) { /* Mobile devices */
+                :root {
+                    font-size: 16px;
+                }
+                body {
+                    padding: 0.5rem;
+                }
+                .bento-grid {
+                    gap: 0.5rem;
+                    min-height: auto;
+                }
+                .bento-item {
+                    padding: 0.8rem;
+                }
+                #canvas-container {
+                    min-height: 50vh; /* Ensure canvas is visible */
+                }
+            }
+
+            @media (orientation: landscape) and (max-width: 900px) { /* Landscape mobile */
+                .bento-grid {
+                    grid-template-columns: 1fr 1fr; /* Two columns */
+                }
+                #canvas-container {
+                    grid-column: 1 / span 1;
+                    grid-row: 1 / span all; /* Take full height */
+                    min-height: 100%;
+                }
+                #controls-container, #report-container, #fen-container {
+                    grid-column: 2 / span 1;
+                    grid-row: auto;
+                }
+            }
+
+            /* Pico.css overrides for better integration */
+            h1, h2, h3, h4, h5, h6 {
+                color: var(--text-color);
+            }
+            button {
+                background-color: var(--primary);
+                color: var(--text-color);
+                border-color: var(--primary);
+                transition: background-color 0.2s ease;
+            }
+            button:hover {
+                background-color: var(--primary-hover);
+                border-color: var(--primary-hover);
+            }
+            button.secondary {
+                background-color: var(--secondary);
+                border-color: var(--secondary);
+            }
+            button.secondary:hover {
+                background-color: var(--secondary-hover);
+                border-color: var(--secondary-hover);
+            }
+            button.contrast {
+                background-color: var(--card-border-color);
+                border-color: var(--card-border-color);
+            }
+            button.contrast:hover {
+                background-color: #444;
+                border-color: #444;
+            }
+            select, input[type="number"], input[type="text"] {
+                background-color: var(--card-background-color);
+                color: var(--text-color);
+                border-color: var(--card-border-color);
+            }
+            select:focus, input[type="number"]:focus, input[type="text"]:focus {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 0.1rem rgba(76, 175, 80, 0.25);
+            }
+            fieldset {
+                border-color: var(--card-border-color);
+            }
+            legend {
+                color: var(--text-color);
             }
         </style>
     </head>
