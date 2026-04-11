@@ -66,3 +66,13 @@ Para mejorar la flexibilidad durante el juego manual y la experimentación, se h
 
 - **Visibilidad Condicional de Controles:** Para mantener la interfaz limpia y relevante, el campo para ajustar la profundidad de búsqueda solo es visible cuando se selecciona un algoritmo de `pensamiento` que lo utiliza (como "Minimax Paralelo").
 
+---
+### Mejoras de UI y Corrección de Errores de Renderizado (Abril 2026)
+
+Se han implementado varias mejoras en la interfaz de usuario y se han corregido errores relacionados con el renderizado del tablero y las piezas.
+
+#### Correcciones y Mejoras
+- **Posicionamiento del Tablero:** Se ajustó la posición del tablero para que se alinee en la esquina superior izquierda de su contenedor, optimizando el espacio en pantalla y mejorando la visibilidad.
+- **Redimensionamiento de Piezas:** Se corrigió un problema donde las piezas no mantenían su relación de aspecto con el tablero al redimensionar la ventana. Ahora, las piezas se escalan correctamente junto con el tablero.
+- **Validación de Interacciones:** Se añadió una validación para evitar errores de renderizado al hacer clic o tocar fuera del área del tablero.
+- **Colores del Tablero:** Se solucionó un problema donde uno de los colores del tablero era transparente. Ahora, el tablero se renderiza con dos colores fijos y opacos para las casillas.

@@ -209,7 +209,8 @@ function windowResized() {
     let size = Math.min(canvasContainer.clientWidth, canvasContainer.clientHeight);
     resizeCanvas(size, size);
     if (tablero) {
-        tablero.tam = size / 10;
+        // Update tablero.tam and then update all pieces
+        tablero.actualizarTamPiezas(size / 10); 
     }
 }
 

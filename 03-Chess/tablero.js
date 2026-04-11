@@ -352,11 +352,11 @@ export class Juego {
 		let pos = [-1,-1];
 		pos = [(y/this.tam|0),(x/this.tam|0)];
 		// tamañox (8) -> this.tablero[0].length*this.tam;   x -> mX 
-		if(x > this.tablero[0].length*this.tablero.tam )					
+		if(x > this.tablero[0].length*this.tam )					
 			pos = [-1,-1];
 		if(x < 0)					
 			pos = [-1,-1];
-		if(y > this.tablero.length*this.tablero.tam )
+		if(y > this.tablero.length*this.tam )
 			pos = [-1,-1];
 		if(y < 0)					
 			pos = [-1,-1];
@@ -713,6 +713,10 @@ export class Juego {
 		let _tam = this.tam;
 		let _margen=this.margen;
 		
+		// Define fixed colors for the board squares
+		const lightSquareColor = [240, 217, 181, 255]; // Light wood color, opaque
+		const darkSquareColor = [181, 136, 99, 255];  // Dark wood color, opaque
+		
 		strokeWeight(_margen);
 		stroke(color);
 		noFill();
@@ -732,8 +736,8 @@ export class Juego {
 
 				// dibuja tablero
 				noStroke();
-				if (c==0){ color[3]=255; fill(color); c=1;} 
-				else { color[3]=5; fill(color); c=0; }
+				if (c==0){ fill(lightSquareColor); c=1;} 
+				else { fill(darkSquareColor); c=0; }
 				square(i*_tam+_margen/2, j*_tam+_margen/2, _tam);
 
 				
@@ -757,8 +761,8 @@ export class Juego {
 				
 			}
 			
-			if (c==0){ color[3]=255; fill(color); c=1;} 
-				else { color[3]=5; fill(color); c=0; }
+			if (c==0){ fill(lightSquareColor); c=1;} 
+				else { fill(darkSquareColor); c=0; }
 
 			text(this.tablero.length-i+1,_tam*.9,i*_tam+_margen*0);
 			
@@ -831,6 +835,10 @@ export class Juego {
 		
 		// Si no se selecciona una Pieza no continúa
 		if(this.posSel[0]===-1) return;
+		if (this.piezaSel[0] < 0 || this.piezaSel[0] >= this.tablero.length ||
+		    this.piezaSel[1] < 0 || this.piezaSel[1] >= this.tablero[0].length) {
+		    return; // Invalid piece selection coordinates
+		}
 		if(!this.piezaSel || this.piezaSel.length!=2 || this.piezaSel[0]<0) return;
 		if(this.tablero[this.piezaSel[0]][this.piezaSel[1]]==0) return;
 		
@@ -1007,6 +1015,13 @@ export class Juego {
 		return Math.floor(Math.random() * (max - min + 1)) + min;
 	}
 
+	actualizarTamPiezas(newTam) {
+		this.tam = newTam; // Update the board's cell size
+		for (let i = 0; i < this.piezas.length; i++) {
+			this.piezas[i].piezaSize = newTam;
+			this.piezas[i].coord = [this.piezas[i].pos[0] * newTam, this.piezas[i].pos[1] * newTam];
+		}
+	}
 	
 } // End of Juego class
 
