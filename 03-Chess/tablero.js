@@ -1,4 +1,5 @@
 import { Pieza } from './pieza.js';
+import { BIBLIOTECA_EVALUACION } from './evaluacion.js';
 
 // La función `valorPieza` ha sido movida a `evaluacion.js`
 
@@ -48,8 +49,8 @@ export class Juego {
         this.valorn_fdeN = 0; // Valor de las piezas negras según la función de evaluación de las negras
 
 		// Las funciones de evaluación se asignan desde principal.js
-		//this.fdeBlancas=valorPieza;
-		//this.fdeNegras=valorPieza;
+		this.fdeBlancas=BIBLIOTECA_EVALUACION.simple;
+		this.fdeNegras=BIBLIOTECA_EVALUACION.simple;
 
         // Las funciones de pensamiento (IA) se asignan desde principal.js
         this.fPensamientoBlancas = null;
@@ -303,7 +304,9 @@ export class Juego {
         // 1. Primera Pasada: Evaluar todas las piezas con la función de las blancas (fdeBlancas).
         for (let k = 0; k < this.piezas.length; k++) {
             const pieza = this.piezas[k];
-            this.fdeBlancas(pieza, this.turno); // fdeBlancas modifica pieza.valor
+            if (typeof this.fdeBlancas === 'function') {
+                this.fdeBlancas(pieza, this.turno); // fdeBlancas modifica pieza.valor
+            }
             if (pieza.bando > 0) { this.valorb_fdeB += pieza.valor; }
             else { this.valorn_fdeB += pieza.valor; }
         }
@@ -316,7 +319,9 @@ export class Juego {
         // 2. Segunda Pasada: Evaluar todas las piezas con la función de las negras (fdeNegras).
         for (let k = 0; k < this.piezas.length; k++) {
             const pieza = this.piezas[k];
-            this.fdeNegras(pieza, this.turno); // fdeNegras modifica pieza.valor
+            if (typeof this.fdeNegras === 'function') {
+                this.fdeNegras(pieza, this.turno); // fdeNegras modifica pieza.valor
+            }
             if (pieza.bando > 0) { this.valorb_fdeN += pieza.valor; }
             else { this.valorn_fdeN += pieza.valor; }
         }
