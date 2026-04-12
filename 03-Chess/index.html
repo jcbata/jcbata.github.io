@@ -1,19 +1,243 @@
 <!DOCTYPE html>
-
-<html>
+<html lang="es" data-theme="light">
     <head>
-        <title>Chess</title>
+        <title>Chess AI Arena</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <!-- script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.0.0/p5.min.js"></script -->
         <script src="https://cdn.jsdelivr.net/npm/p5@1.9.2/lib/p5.js"></script>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+        <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+        <style>
+            :root {
+                /* Modern Color Palette */
+                --primary: #4CAF50; /* Green */
+                --primary-hover: #43A047;
+                --secondary: #2196F3; /* Blue */
+                --secondary-hover: #1976D2;
+                --accent: #FFC107; /* Amber */
+                --background-color: #121212; /* Dark background */
+                --card-background-color: #1E1E1E; /* Slightly lighter card background */
+                --card-border-color: #333333;
+                --text-color: #E0E0E0; /* Light text */
+                --text-color-secondary: #B0B0B0; /* Lighter text */
+                --canvas-background-color: black; /* Default for dark mode */
+
+                font-size: 18px; /* Slightly smaller base font for more content */
+                font-family: 'Roboto', sans-serif;
+            }
+            :root[data-theme="light"] {
+                --primary: #28a745; /* A nice green for light mode */
+                --primary-hover: #218838;
+                --secondary: #007bff; /* A nice blue for light mode */
+                --secondary-hover: #0069d9;
+                --accent: #ffc107; /* Amber, works well in light mode */
+                --background-color: #f8f9fa; /* Light background */
+                --card-background-color: #ffffff; /* White card background */
+                --card-border-color: #dee2e6; /* Light grey border */
+                --text-color: #212529; /* Dark text for readability */
+                --text-color-secondary: #6c757d; /* Muted dark text */
+                --canvas-background-color: transparent; /* Transparent canvas background */
+            }
+            body {
+                margin: 0;
+                padding: 1rem;
+                background-color: var(--background-color);
+                color: var(--text-color);
+            }
+            .bento-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* Flexible columns */
+                grid-template-rows: auto;
+                gap: 1rem;
+                min-height: calc(100vh - 2rem); /* Use min-height for flexibility */
+                align-items: start; /* Align items to the start of their grid area */
+            }
+            .bento-item {
+                background-color: var(--card-background-color);
+                border: 1px solid var(--card-border-color);
+                border-radius: var(--border-radius);
+                padding: 1rem;
+                overflow: auto;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Subtle shadow */
+            }
+            #canvas-container {
+                grid-column: 1 / span 2; /* Occupy 2 columns by default */
+                grid-row: 1 / span 2; /* Occupy 2 rows by default */
+                display: flex;
+                justify-content: flex-start; /* Align to top-left */
+                align-items: flex-start; /* Align to top-left */
+                padding: 0;
+                background-color: var(--canvas-background-color); /* Use variable */
+                border-radius: var(--border-radius);
+                overflow: hidden; /* Ensure canvas corners are rounded */
+                min-height: 300px; /* Ensure it's always visible */
+            }
+            #canvas-container canvas {
+                display: block; /* Remove extra space below canvas */
+                max-width: 100%;
+                height: auto;
+            }
+            #controls-container {
+                grid-column: 3 / span 1;
+                grid-row: 1 / span 1;
+            }
+            #report-container {
+                grid-column: 3 / span 1;
+                grid-row: 2 / span 1;
+            }
+            #fen-container {
+                grid-column: 1 / span 3; /* Span across all available columns at the bottom */
+                grid-row: 3 / span 1;
+            }
+
+            /* Responsive layout for smaller screens */
+            @media (max-width: 1024px) { /* Tablets and smaller desktops */
+                .bento-grid {
+                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                }
+                #canvas-container {
+                    grid-column: 1 / span all; /* Full width */
+                    grid-row: auto;
+                }
+                #controls-container, #report-container, #fen-container {
+                    grid-column: 1 / span all; /* Full width */
+                    grid-row: auto;
+                }
+            }
+
+            @media (max-width: 768px) { /* Mobile devices */
+                :root {
+                    font-size: 16px;
+                }
+                body {
+                    padding: 0.5rem;
+                }
+                .bento-grid {
+                    gap: 0.5rem;
+                    min-height: auto;
+                }
+                .bento-item {
+                    padding: 0.8rem;
+                }
+                #canvas-container {
+                    min-height: 50vh; /* Ensure canvas is visible */
+                }
+            }
+
+            @media (orientation: landscape) and (max-width: 900px) { /* Landscape mobile */
+                .bento-grid {
+                    grid-template-columns: 1fr 1fr; /* Two columns */
+                }
+                #canvas-container {
+                    grid-column: 1 / span 1;
+                    grid-row: 1 / span all; /* Take full height */
+                    min-height: 100%;
+                }
+                #controls-container, #report-container, #fen-container {
+                    grid-column: 2 / span 1;
+                    grid-row: auto;
+                }
+            }
+
+            /* Pico.css overrides for better integration */
+            h1, h2, h3, h4, h5, h6 {
+                color: var(--text-color);
+            }
+            button {
+                background-color: var(--primary);
+                color: var(--text-color);
+                border-color: var(--primary);
+                transition: background-color 0.2s ease;
+            }
+            button:hover {
+                background-color: var(--primary-hover);
+                border-color: var(--primary-hover);
+            }
+            button.secondary {
+                background-color: var(--secondary);
+                border-color: var(--secondary);
+            }
+            button.secondary:hover {
+                background-color: var(--secondary-hover);
+                border-color: var(--secondary-hover);
+            }
+            button.contrast {
+                background-color: var(--card-border-color);
+                border-color: var(--card-border-color);
+            }
+            button.contrast:hover {
+                background-color: #444;
+                border-color: #444;
+            }
+            select, input[type="number"], input[type="text"] {
+                background-color: var(--card-background-color);
+                color: var(--text-color);
+                border-color: var(--card-border-color);
+            }
+            select:focus, input[type="number"]:focus, input[type="text"]:focus {
+                border-color: var(--primary);
+                box-shadow: 0 0 0 0.1rem rgba(76, 175, 80, 0.25);
+            }
+            fieldset {
+                border-color: var(--card-border-color);
+            }
+            legend {
+                color: var(--text-color);
+            }
+        </style>
     </head>
     <body>
-		<script type="text/javascript" src="tablero.js"></script>
-		<script type="text/javascript" src="pieza.js"></script>
-    <script type="text/javascript" src="principal.js"></script>
-    <label> FEN
-      <input type="text" id="factor" name="factor" size="60" value="">
-    </label>
-    <button id="datosFen" onclick="cargaFen();">  Carga FEN</button>  
+        <div class="bento-grid">
+            <article id="canvas-container">
+                <!-- El canvas de p5.js se adjuntará aquí -->
+            </article>
+            <article id="controls-container">
+                <div id="game-controls">
+                    <fieldset>
+                        <legend>Modo de Juego</legend>
+                        <label><input type="radio" id="mode-manual" name="game-mode" value="manual" checked> Manual</label>
+                        <label><input type="radio" id="mode-auto" name="game-mode" value="auto"> Automático</label>
+                    </fieldset>
+                    <div id="auto-controls" style="display: none;">
+                        <div class="grid">
+                            <button id="start-btn">Iniciar</button>
+                            <button id="pause-btn" class="secondary">Pausar</button>
+                            <button id="stop-btn" class="contrast">Detener</button>
+                        </div>
+                        <hr>
+                        <div class="grid">
+                            <div>
+                                <h6>IA Blancas</h6>
+                                <label for="white-thought">Pensamiento:</label><select id="white-thought"></select>
+                                <label for="white-depth">Profundidad:</label><input type="number" id="white-depth" name="white-depth" min="1" max="5" value="2">
+                                <label for="white-eval">Evaluación:</label><select id="white-eval"></select>
+                            </div>
+                            <div>
+                                <h6>IA Negras</h6>
+                                <label for="black-thought">Pensamiento:</label><select id="black-thought"></select>
+                                <label for="black-depth">Profundidad:</label><input type="number" id="black-depth" name="black-depth" min="1" max="5" value="2">
+                                <label for="black-eval">Evaluación:</label><select id="black-eval"></select>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="manual-controls">
+                        <hr>
+                        <h6>IA Negras (Manual)</h6>
+                        <label for="black-thought-manual">Pensamiento:</label><select id="black-thought-manual"></select>
+                        <label for="black-depth-manual">Profundidad:</label><input type="number" id="black-depth-manual" name="black-depth-manual" min="1" max="5" value="2">
+                        <label for="black-eval-manual">Evaluación:</label><select id="black-eval-manual"></select>
+                    </div>
+                </div>
+            </article>
+            <article id="report-container">
+                <h6>Reporte de Simulación</h6>
+                <div id="test-report" style="white-space: pre-wrap; font-size: 0.8em;"></div>
+            </article>
+            <article id="fen-container">
+                <label for="factor">FEN:</label>
+                <input type="text" id="factor" name="factor">
+                <button id="datosFen" onclick="cargaFen();">Carga FEN</button>
+            </article>
+        </div>
+        <script type="module" src="principal.js"></script>
     </body>
 </html>

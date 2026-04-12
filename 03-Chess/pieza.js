@@ -1,4 +1,4 @@
-class Pieza {
+export class Pieza {
 
 	constructor(
 		tipo = 0,
@@ -33,8 +33,8 @@ class Pieza {
 	dibujar(estilo) {
 		//estos valores dependenden de la imágen png
 		let _estilo = estilo;
-		let ancho = img.width/6;
-		let alto = img.height/12;
+		let ancho = this.img.width/6;
+		let alto = this.img.height/12;
 		let bandoPos = 0; // identifica el bando (Blancas o Negras)
 				
 		if(this.bando<0) bandoPos = _estilo*alto*2;
